@@ -32,7 +32,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 21 | A legal entity | Stripe Atlas, Firstbase, doola |
 | last | Rules, only if you want them | you |
 
-Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours.
+Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours, so it never has to stop and ask you for a code. The first nine layers run in one session with no input from you. The only things it cannot do alone are the ones the law ties to a real person: bank details for payouts, a notarised form for a mailbox, signing to form a company.
 
 ## Install
 
