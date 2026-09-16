@@ -15,7 +15,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 4 | Money: a card, Stripe to get paid, a crypto wallet | Stripe Issuing or Lithic, Stripe, local keygen |
 | 5 | A browser it can drive | your host's own browser tools, Notte via Orthogonal as fallback |
 | 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol |
-| 7 | A face: profile photo | Nano Banana via Orthogonal |
+| 7 | An avatar: abstract squiggle mark, not a face | Nano Banana via Orthogonal |
 | 8 | A voice, the same on calls and voice notes | ElevenLabs via Orthogonal |
 | 9 | Eyes on the world: search, scrape, weather, local businesses | Exa, Tavily, Perplexity, Olostep, Openmart, Precip via Orthogonal |
 | 10 | Its own computer | Smol Machines via Orthogonal, or Fly.io, Hetzner, E2B, AWS |
