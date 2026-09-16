@@ -22,13 +22,13 @@ Paste `SKILL.md` into the system prompt or rules file and give the agent shell a
 
 ## Prerequisites the agent needs at runtime
 
-- Shell access, Node 18+, Python 3 with Pillow. That is enough for the base identity (Layers 0 to 2, 6 to 8, 11, 13, 15).
+- Shell access, Node 18+, Python 3 with Pillow. That is enough for the base identity (Layers 0 to 2, 6 to 8, 11, 13, 15) and the dashboard (Layer 22, stdlib only).
 - `orth` CLI on PATH with `ORTHOGONAL_API_KEY` exported for Layers 9, 12, 19, 20 and the Notte fallback. Check credit with `orth balance`.
 - No human needs to be present for setup. The Human touchpoints table in `SKILL.md` lists the few later steps that do.
 
 ## How the skill is organised
 
-Layers, numbered 0 to 21, then a final rules step. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
+Layers, numbered 0 to 22, then a final rules step. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
 
 Layer 6 (accounts) holds one recipe per service. Every recipe has the same four lines: sign up, token, verify, then what to do after.
 
@@ -48,6 +48,15 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 - No em dashes anywhere in the repo.
 - The skill ships with no rules of its own. Rules come from the human at step 7 and live in the identity file. Do not hardcode restrictions into a layer.
 - Do not add a package manifest or build step. Helpers go in `scripts/` as single-file Python or shell with at most one pip dependency, and get referenced from `SKILL.md`.
+
+## Dashboard
+
+`scripts/dashboard.py` serves `scripts/dashboard.html` and is the only thing in the repo with behaviour. Rules for it:
+
+- Stdlib only. No frameworks, no CDN, no build. It must open offline.
+- Secrets never reach the browser. Anything matching the `SECRET_KEYS` pattern is masked server-side; extend the pattern when you add a new secret field name to the identity schema.
+- Only fields matched by `ALLOWED` are writable from the page. Add a layer to `LAYERS` in the HTML when you add one to `SKILL.md`, with a `get` that reads the identity file paths that layer stores.
+- Test with a sample identity file, not the real one: `python3 scripts/dashboard.py --identity /tmp/sample.json --no-open`.
 
 ## Commit style
 

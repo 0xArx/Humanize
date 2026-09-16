@@ -30,6 +30,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 19 | Verifying other people | Didit via Orthogonal | Orthogonal key |
 | 20 | Contacts and people lookup | Hunter, People Data Labs, Apollo, Edges via Orthogonal | Orthogonal key |
 | 21 | A legal entity | Stripe Atlas, Firstbase, doola | sign formation docs |
+| 22 | A dashboard: see everything, switch layers, edit, ask, open chat | `scripts/dashboard.py`, local | no |
 | last | Rules, only if you want them | you | if you want |
 
 Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours, so it never has to stop and ask you for a code. The base identity (inbox, phone, avatar, voice, vault, calendar, GitHub, Vercel, Supabase) runs in one session with no input from you and no API key to start: the agent signs itself up for each. The only things it cannot do alone are the ones the law ties to a real person: an identity check for a card, bank details for payouts, a notarised form for a mailbox, signing to form a company.
@@ -60,6 +61,14 @@ Tell your agent any of these:
 
 It reads `~/.humanize/identity.json`, provisions whatever is missing, and gets on with the task.
 
+## Dashboard
+
+```bash
+python3 scripts/dashboard.py
+```
+
+Opens `http://127.0.0.1:4242`: the avatar, name, persona and DID at the top, copy buttons for the email, number, wallet and handles, one card per layer with a status dot and an on/off switch, a box to send the agent a request, the rules editor, and the log. The Chat button reopens whatever app the agent runs in (Claude Code, Codex, Cursor, VS Code). Secrets are masked before they reach the browser. The page updates itself every few seconds, so you can watch the bootstrap fill it in.
+
 ## Rules are yours to set
 
 Humanize ships with none. When setup finishes the agent asks you one question: do you want any rules? A spend cap, off-limits services, whether it says it is an AI, anything. Whatever you answer is stored in the identity file and followed from then on. Say "none" and it runs with no restrictions.
@@ -68,9 +77,10 @@ Humanize ships with none. When setup finishes the agent asks you one question: d
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | The skill. Layers 0 to 21, commands, costs, identity file schema, and the rules step. |
+| `SKILL.md` | The skill. Layers 0 to 22, commands, costs, identity file schema, and the rules step. |
 | `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
 | `scripts/avatar.py` | Draws the agent's squiggle avatar from its name. Deterministic, needs only Pillow. |
+| `scripts/dashboard.py`, `scripts/dashboard.html` | Local dashboard. Stdlib Python server plus one HTML page. Reads and writes the identity file, masks secrets, runs the host's open-chat command. |
 | `README.md` | This file. |
 
 ## Roadmap

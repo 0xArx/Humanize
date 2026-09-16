@@ -1,6 +1,6 @@
 ---
 name: humanize
-description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, and a legal entity. Agent-native providers (Mailgent, AgentMail, AgentPhone, Dial) let the agent sign itself up with no human and no key; Orthogonal covers the world-facing layers. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
+description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, a legal entity, and a local dashboard to see and steer all of it. Agent-native providers (Mailgent, AgentMail, AgentPhone, Dial) let the agent sign itself up with no human and no key; Orthogonal covers the world-facing layers. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
 ---
 
 # Humanize
@@ -39,6 +39,9 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "calendar": { "booking_url": "https://cal.com/ari-vale/15min" },
   "address": { "line1": "...", "city": "...", "provider": "stable" },
   "domain": { "name": "arivale.com", "registrar": "vercel" },
+  "layers": { "14": { "enabled": false } },
+  "host": { "app": "claude-code", "open_command": "open -a \"Claude\"", "session_id": "..." },
+  "dashboard_requests": [ { "at": "2026-09-16T10:00:00Z", "text": "Get a UK number.", "done": false } ],
   "rules": [],
   "accounts": {
     "github": { "username": "arivale", "vault": "github", "created": "2026-09-16" },
@@ -459,6 +462,44 @@ The installed Orthogonal skills `find-leads`, `lead-enrichment`, `person-lookup`
 
 For an agent that will sign contracts, hold a bank account, or invoice under a company name, the human may want it to have an entity. Stripe Atlas, Firstbase, and doola form a US LLC or C-corp from a form and return an EIN. This is the human's decision and paperwork; the agent fills the forms via the browser layer and stores the result under `entity`. The entity's registered agent address can serve as Layer 16.
 
+## Layer 22: Dashboard
+
+A person can look in a mirror. The agent gets one: a local web page that shows everything it is and has, lets the human switch layers on and off, edit the name, persona and rules, ask for changes, and jump back into the chat. Nothing leaves the machine.
+
+**Start it** as soon as the identity file exists, so the human can watch layers light up during the bootstrap:
+
+```bash
+python3 scripts/dashboard.py            # serves http://127.0.0.1:4242 and opens it
+python3 scripts/dashboard.py --identity ~/.humanize/identity.json --port 4242 --no-open
+```
+
+Run it in the background (the host's background-command facility, or `nohup ... &`) and keep it running across sessions. It is stdlib Python, no install.
+
+**What it shows.** Avatar, name, persona, DID. Copy pills for the email, phone number, USDC address, GitHub handle, booking link. One card per layer 0 to 21 with a status dot (green provisioned, amber partial, grey empty), the layer's facts (addresses, handles, ids), an on/off switch, and a Provision or Modify button. Below: a box to send the agent a request, the rules editor, the log. Secrets are masked before they reach the browser and are never editable there.
+
+**Wire the Chat button.** The dashboard runs `host.open_command` from the identity file. Set it during setup for whatever host is running the agent, then test it once:
+
+| Host | `host.app` | `host.open_command` |
+|------|------------|---------------------|
+| Claude Code, desktop app | `claude-code` | `open -a "Claude"` (macOS) |
+| Claude Code, terminal | `claude-code` | `osascript -e 'tell app "Terminal" to do script "cd <project> && claude --resume <session_id>"'` on macOS; `x-terminal-emulator -e claude --resume <session_id>` on Linux |
+| Claude Code, web | `claude-code-web` | `open "<session URL>"` |
+| Codex CLI | `codex` | `osascript -e 'tell app "Terminal" to do script "cd <project> && codex resume <session_id>"'` |
+| Cursor | `cursor` | `cursor <project>` |
+| VS Code | `vscode` | `code <project>` |
+| Anything else | its name | whatever command brings the chat back to the front |
+
+Write `host.app`, `host.open_command`, and `host.session_id` to the identity file. If the host has no way to be reopened by command, leave `open_command` empty; the dashboard will say so and the request box still works.
+
+**How the agent uses it.** At the start of every turn, and after every provisioning step:
+
+1. Read `dashboard_requests`. Do each one with `done: false`, in order. Mark it `done: true` when finished (the human can also mark it done from the page).
+2. Read `layers.<n>.enabled`. A layer switched off is not used: do not send from that inbox, do not call from that number, do not post to that network, until it is switched back on. Do not delete anything; off is not gone.
+3. Read `name`, `persona`, `rules`. The human may have edited them from the page. Apply them from now on. If the name changed, update display names, bios and signatures on every account.
+4. Append to `log` whenever something changes, with `at` and `did`, so the page tells the truth.
+
+The page polls the identity file every 3 seconds. Whatever the agent writes appears without a reload.
+
 ## Human touchpoints
 
 The whole point is that setup runs without the human. Layers 0, 1, 2, 7, 8, 13, and 15 need no key and no person: the agent signs itself up. These are the only places a person is ever needed, and each is reached only when that layer is actually wanted:
@@ -471,7 +512,7 @@ The whole point is that setup runs without the human. Layers 0, 1, 2, 7, 8, 13, 
 | Layer 9 onward | An Orthogonal API key with credit | The marketplace account belongs to a person; $10 free credit on signup, no card |
 | Layer 16, mailbox | Notarised USPS Form 1583 | Federal requirement, a person must sign |
 | Layer 21 | Sign the formation documents | The entity's owner must be a person |
-| Last step | Rules, if any | Only the human knows what they want |
+| Last step | Rules, if any | Only the human knows what they want; they can also type them on the dashboard later |
 
 Everything else, including every verification code, every 2FA setup, every account creation, every token, the agent does itself using its own inbox and number. If a step seems to need the human and is not in this table, look again: the code is in Layer 1 or Layer 2, the payment is x402 from Layer 4, and the browser is Layer 5.
 
@@ -480,26 +521,27 @@ Everything else, including every verification code, every 2FA setup, every accou
 Run this top to bottom on a fresh agent. No pauses, no keys to start. Write to the identity file after each line.
 
 1. `POST https://api.mailgent.dev/v0/agent-signup` with an empty body. Inbox, API key, DID, vault, calendar, USDC wallet, all at once. (Layers 0, 1, 13, 15, 4)
-2. Pick a name, check it is free on AgentMail and GitHub, write the persona. (Layer 0)
-3. AgentMail sign-up with the Mailgent address as `human_email`, read the code from Mailgent, verify. (Layer 1)
-4. AgentPhone sign-up with the AgentMail address, read the code, verify, store key and number. (Layer 2)
-5. Pick an AgentPhone voice and set it on the agent. (Layer 8)
-6. Run `scripts/avatar.py` with the name. (Layer 7)
-7. Generate an SSH key and extra wallets. (Layers 10 and 4)
-8. GitHub: browser sign-up with the AgentMail address, code from the inbox, TOTP secret into the vault, fine-grained token created and verified, avatar uploaded. (Layers 6, 13, 7)
-9. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
-10. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
-11. Stripe account in test mode. (Layer 4)
-12. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. Dial if iMessage or a non-US number is wanted. (Layers 3, 2)
-13. X and Reddit accounts with the avatar and persona. (Layer 14)
-14. Cal.com booking page. (Layer 15)
-15. Ask the human about rules and carry on. (Last step)
+2. Start the dashboard in the background and set `host.open_command`. The human can now watch. (Layer 22)
+3. Pick a name, check it is free on AgentMail and GitHub, write the persona. (Layer 0)
+4. AgentMail sign-up with the Mailgent address as `human_email`, read the code from Mailgent, verify. (Layer 1)
+5. AgentPhone sign-up with the AgentMail address, read the code, verify, store key and number. (Layer 2)
+6. Pick an AgentPhone voice and set it on the agent. (Layer 8)
+7. Run `scripts/avatar.py` with the name. (Layer 7)
+8. Generate an SSH key and extra wallets. (Layers 10 and 4)
+9. GitHub: browser sign-up with the AgentMail address, code from the inbox, TOTP secret into the vault, fine-grained token created and verified, avatar uploaded. (Layers 6, 13, 7)
+10. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
+11. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
+12. Stripe account in test mode. (Layer 4)
+13. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. Dial if iMessage or a non-US number is wanted. (Layers 3, 2)
+14. X and Reddit accounts with the avatar and persona. (Layer 14)
+15. Cal.com booking page. (Layer 15)
+16. Ask the human about rules and carry on. (Last step)
 
-Steps 1 through 10 take one session with no input and no Orthogonal key. Everything after is optional and runs when a task first needs it.
+Steps 1 through 11 take one session with no input and no Orthogonal key. Everything after is optional and runs when a task first needs it.
 
 ## Order of operations for a fresh agent
 
-Follow the one-shot bootstrap above. After step 4 the agent can sign up for almost anything on its own. After step 9 it can build and ship software. After step 14 it can do most of what a person with a laptop and a phone can do.
+Follow the one-shot bootstrap above. After step 5 the agent can sign up for almost anything on its own. After step 10 it can build and ship software. After step 15 it can do most of what a person with a laptop and a phone can do.
 
 ## Last step: Ask the human for rules
 
