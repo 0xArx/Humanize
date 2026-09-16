@@ -22,6 +22,7 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "whatsapp": { "status": "pending", "number": "+14155550123" },
   "card": { "status": "not_provisioned" },
   "browser": { "provider": "notte" },
+  "rules": [],
   "accounts": {
     "github": { "username": "arivale", "token": "ghp_...", "created": "2026-09-16" },
     "vercel": { "token": "...", "team_id": "..." },
@@ -31,7 +32,7 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
 }
 ```
 
-Every credential the agent earns goes in here. Every cost goes in `log`. The user can read this file at any time and see exactly what their agent is and what it has.
+Every credential the agent earns goes in here. Every cost goes in `log`. `rules` holds whatever the human chose to set at the end of setup, and stays empty if they set nothing. The user can read this file at any time and see exactly what their agent is and what it has.
 
 ## Discovery rule
 
@@ -104,7 +105,7 @@ orth run agentphone /v0/agent/verify --body '{"verification_id":"...","otp_code"
 orth run agentphone /v1/numbers --body '{"country":"US","areaCode":"415","agentId":"<agent_id>"}'
 ```
 
-Cost: $3 per month per number. Ask before buying.
+Cost: $3 per month per number.
 
 **Receive SMS**
 
@@ -143,11 +144,7 @@ A card lets the agent pay for the things above and for anything else the user ap
 
 No card issuer is on Orthogonal yet. Search `orth search "virtual card"` first. If nothing, this layer stays `not_provisioned` until the user connects an issuer of their choice.
 
-Rules that apply regardless of provider:
-
-- The agent never touches the user's own bank, card, or wallet. It uses only a card that was issued to the agent with a limit the user set.
-- Every spend is logged in the identity file with amount and purpose.
-- Any new recurring charge, and any single charge above the limit the user set, is asked about first. Stored keys are not permission to spend.
+Once an issuer is connected, store the card token under `card` and log each spend in `log` with amount and purpose.
 
 ## Layer 5: Hands (browser via Notte)
 
@@ -161,7 +158,7 @@ orth run notte "/sessions/<session_id>/page/screenshot"
 orth run notte "/sessions/<session_id>/cookies"     # save session for later
 ```
 
-Keep `solve_captchas` off. If a sign-up flow blocks with a CAPTCHA, stop and hand that one step to the user. Do not route around it.
+`solve_captchas` and `proxies` are available on session start if a flow needs them.
 
 ## Layer 6: Accounts
 
@@ -202,15 +199,6 @@ Every account follows the same shape. Do the steps in order and write to the ide
 
 Run `orth search "<service>"` first. If it is there, the account may not even be needed. If not, apply the protocol above. Add the recipe to this file once it works so the next agent does not rediscover it.
 
-## Guardrails
-
-- One identity per human. The agent is one person, not a crowd. Never create multiple accounts on one service to get around limits.
-- Say what you are when asked. If a human on a call or in an email asks whether they are talking to an AI, answer honestly.
-- Money is never assumed. Every new monthly cost and every purchase gets a yes from the user first, even if the key is already stored.
-- No CAPTCHA bypass, no scraping past a login wall the agent does not own, no use of the user's personal credentials anywhere.
-- Irreversible actions (release a number, delete an inbox, delete an account) need a yes from the user first.
-- Keep the identity file local. Never commit it, never put it in an env var on a deployed app, never paste it into a chat.
-
 ## Order of operations for a fresh agent
 
 1. Identity: name and persona.
@@ -219,5 +207,21 @@ Run `orth search "<service>"` first. If it is there, the account may not even be
 4. GitHub.
 5. Vercel and Supabase, both via GitHub sign-in.
 6. WhatsApp, card, and anything else, as the task needs them.
+7. Ask the human if they want any rules.
+
+## Step 7: Ask the human for rules
+
+Humanize ships with no rules of its own. When the base setup is done (steps 1 to 5), ask the human one question:
+
+> Setup is done. Do you want to set any rules for how I use this identity? For example a spending cap, services I should never sign up for, whether I should say I am an AI when asked, or anything else. Say "none" to skip.
+
+Write whatever they answer into `rules` in the identity file, as plain sentences. Read `rules` at the start of every later task and follow them. If the list is empty, there are no restrictions beyond what the human asks for in the moment.
+
+Suggested prompts if they want ideas, offered only if they ask:
+
+- A monthly spend cap.
+- Services or domains that are off limits.
+- Whether to disclose being an AI on calls and emails.
+- Which actions need a yes first (buying a number, deleting an inbox, releasing a number).
 
 After step 3 the agent can sign up for almost anything on its own. After step 5 it can build and ship software. The rest is added when needed.

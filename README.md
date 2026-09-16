@@ -15,6 +15,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 4 | Payment card | your issuer, slot ready | varies |
 | 5 | A browser it can drive | Notte via Orthogonal | credits |
 | 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol | free |
+| 7 | Rules, only if you want them | you | free |
 
 Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours.
 
@@ -44,20 +45,15 @@ Tell your agent any of these:
 
 It reads `~/.humanize/identity.json`, provisions whatever is missing, and gets on with the task.
 
-## Guardrails built in
+## Rules are yours to set
 
-- One identity per human. No account farming.
-- Says it is an AI when asked.
-- Never spends without a yes from you, even with a key stored.
-- No CAPTCHA bypass. Blocked steps come back to you.
-- Never uses your personal credentials. It has its own.
-- Identity file stays local and is never committed or deployed.
+Humanize ships with none. When setup finishes the agent asks you one question: do you want any rules? A spend cap, off-limits services, whether it says it is an AI, anything. Whatever you answer is stored in the identity file and followed from then on. Say "none" and it runs with no restrictions.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | The skill. Layers 0 to 6, commands, costs, identity file schema, guardrails. |
+| `SKILL.md` | The skill. Layers 0 to 7, commands, costs, identity file schema, and the rules step. |
 | `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
 | `README.md` | This file. |
 
