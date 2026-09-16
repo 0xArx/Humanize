@@ -1,6 +1,6 @@
 ---
 name: humanize
-description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser it can drive (Notte), and accounts on services like GitHub, Vercel, and Supabase, including sign-up, verification codes, and API tokens. Uses Orthogonal to find and call each provider. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, or an account.
+description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser (whatever the host provides, Notte as fallback), and accounts on services like GitHub, Vercel, and Supabase, including sign-up, verification codes, and API tokens. Uses Orthogonal to find and call each provider. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, or an account.
 ---
 
 # Humanize
