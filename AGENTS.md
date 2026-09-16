@@ -29,13 +29,13 @@ Paste `SKILL.md` into the system prompt or rules file. Give the agent shell acce
 
 ## How the skill is organised
 
-Layers, numbered 0 to 6. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
+Layers, numbered 0 to 21, then a final rules step. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
 
 Layer 6 (accounts) holds one recipe per service. Every recipe has the same four lines: sign up, token, verify, then what to do after.
 
 ## Adding a new layer or recipe
 
-1. Search Orthogonal first: `orth search "<capability>"`. If a provider exists, the recipe uses `orth run`, not raw curl.
+1. Search Orthogonal first: `orth search "<capability>"`. If a provider exists, the recipe uses `orth run`, not raw curl. If not, go direct to the vendor and write the raw endpoint. The skill is not limited to Orthogonal.
 2. Run every command you write down. Paste real parameter names from `orth api show <slug> <path>`. Do not guess.
 3. State the cost. If it is not free, say the number.
 4. Say what goes into the identity file and under which key.

@@ -2,20 +2,35 @@
 
 A skill that turns an AI agent into a functioning person.
 
-Agents hit walls for boring reasons. They cannot receive a verification email. They cannot get an SMS code. They cannot pay for the thing they need. They cannot sign up anywhere that has no API. Humanize provisions each of those, in order, through APIs, and keeps the result in one identity file so the agent knows what it owns.
+Agents hit walls for boring reasons. They cannot receive a verification email. They cannot get an SMS code. They cannot pay for the thing they need. They cannot sign up anywhere that has no API. Humanize provisions each of those, in order, through APIs, and keeps the result in one identity file so the agent knows what it owns. It uses Orthogonal wherever a provider is listed there and goes direct to the vendor everywhere else.
 
 ## What the agent gets
 
-| Layer | What | Provider | Cost |
-|-------|------|----------|------|
-| 0 | Name and persona | you | free |
-| 1 | Email inbox, send and receive | AgentMail via Orthogonal | $2/mo |
-| 2 | Phone number, SMS, voice calls | AgentPhone via Orthogonal | $3/mo per number |
-| 3 | WhatsApp | rides on the phone number | varies |
-| 4 | Payment card | your issuer, slot ready | varies |
-| 5 | A browser it can drive | your host's own browser tools, Notte via Orthogonal as fallback | free or credits |
-| 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol | free |
-| 7 | Rules, only if you want them | you | free |
+| Layer | What | Where it comes from |
+|-------|------|---------------------|
+| 0 | Name and persona | you |
+| 1 | Email inbox, send and receive | AgentMail via Orthogonal, $2/mo |
+| 2 | Phone number, SMS, voice calls | AgentPhone via Orthogonal, $3/mo per number |
+| 3 | WhatsApp, Telegram, Discord, Slack, iMessage | Meta Cloud API, BotFather, Discord and Slack apps |
+| 4 | Money: a card, Stripe to get paid, a crypto wallet | Stripe Issuing or Lithic, Stripe, local keygen |
+| 5 | A browser it can drive | your host's own browser tools, Notte via Orthogonal as fallback |
+| 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol |
+| 7 | A face: profile photo and video replica | Nano Banana, Tavus via Orthogonal |
+| 8 | A voice, the same on calls and voice notes | ElevenLabs via Orthogonal |
+| 9 | Eyes on the world: search, scrape, weather, local businesses | Exa, Tavily, Perplexity, Olostep, Openmart, Precip via Orthogonal |
+| 10 | Its own computer | Smol Machines via Orthogonal, or Fly.io, Hetzner, E2B, AWS |
+| 11 | Memory: notes, people, files | Supabase pgvector, private GitHub repo |
+| 12 | Brain: extra models | OpenRouter via Orthogonal, or direct keys |
+| 13 | Passwords, TOTP 2FA, recovery codes | identity file or Bitwarden, oathtool |
+| 14 | Social profiles: X, LinkedIn, Reddit, more | sign-up protocol |
+| 15 | Calendar and a booking page | Google Calendar, Cal.com |
+| 16 | A street address and physical mail | Stable, Earth Class Mail, iPostal1, Lob |
+| 17 | A domain, a website, email at its own domain | Vercel Domains, Namecheap, AgentMail custom domain |
+| 18 | E-signatures and documents | Dropbox Sign, DocuSign |
+| 19 | Verifying other people | Didit via Orthogonal |
+| 20 | Contacts and people lookup | Hunter, People Data Labs, Apollo, Edges via Orthogonal |
+| 21 | A legal entity | Stripe Atlas, Firstbase, doola |
+| last | Rules, only if you want them | you |
 
 Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours.
 
@@ -53,13 +68,13 @@ Humanize ships with none. When setup finishes the agent asks you one question: d
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | The skill. Layers 0 to 7, commands, costs, identity file schema, and the rules step. |
+| `SKILL.md` | The skill. Layers 0 to 21, commands, costs, identity file schema, and the rules step. |
 | `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
 | `README.md` | This file. |
 
 ## Roadmap
 
-Card issuer, WhatsApp provider, calendar, and a real mailing address are the next layers. Each one gets added the same way: find it on Orthogonal, run the commands, write the recipe. Pull requests welcome. Read `AGENTS.md` first.
+Every layer that currently points at a vendor with no Orthogonal wrapper (card issuer, WhatsApp, virtual mailbox, e-sign) gets swapped to `orth run` the day one appears. Beyond that: a driver's licence equivalent for age-gated services, ride and delivery apps, banking. Each one gets added the same way: find the provider, run the commands, write the recipe. Pull requests welcome. Read `AGENTS.md` first.
 
 ## License
 
