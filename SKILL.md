@@ -250,17 +250,17 @@ Every account follows the same shape. Do the steps in order and write to the ide
 
 Run `orth search "<service>"` first. If it is there, the account may not even be needed. If not, apply the protocol above. Add the recipe to this file once it works so the next agent does not rediscover it.
 
-## Layer 7: Face
+## Layer 7: Face (avatar)
 
-A human has a face. The agent needs one for profile pictures and anywhere an avatar is asked for.
+The agent needs a profile picture for every account and anywhere an avatar is asked for. It is not a human face. It is an abstract mark: a dense arrangement of squiggles, lines, loops, and curves, unique to this agent, used the same way a person uses one photo everywhere.
 
-**Profile photo.** Generate once, reuse everywhere.
+**Generate once, reuse everywhere.**
 
 ```bash
-orth run nano-banana "/v1beta/models/gemini-2.5-flash-image:generateContent" --body '{"contents":[{"parts":[{"text":"Professional headshot of <persona description>, neutral background, natural light, photo-realistic"}]}],"generationConfig":{"responseModalities":["IMAGE"],"imageConfig":{"aspectRatio":"1:1"}}}'
+orth run nano-banana "/v1beta/models/gemini-2.5-flash-image:generateContent" --body '{"contents":[{"parts":[{"text":"Abstract avatar. A complex arrangement of hand-drawn squiggles, tangled lines, loops, arcs and scribbles, layered and overlapping, filling the frame. Two or three colours on a plain flat background. No face, no figure, no letters, no text, no objects. Flat vector style, clean edges, works at 64px."}]}],"generationConfig":{"responseModalities":["IMAGE"],"imageConfig":{"aspectRatio":"1:1"}}}'
 ```
 
-Decode the base64, save to `~/.humanize/face.png`, and upload it as the avatar on every account in Layer 6. Store the path under `face.photo`.
+Vary the colours and line density per agent so two agents never share a mark. Decode the base64, save to `~/.humanize/face.png`, and upload it as the avatar on every account in Layer 6 and Layer 14. Store the path under `face.photo`. Never regenerate it once accounts carry it; the mark is how people recognise the agent across services.
 
 ## Layer 8: Voice
 
