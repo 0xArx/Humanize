@@ -11,7 +11,7 @@ This skill closes those gaps one at a time. Each part of a human is a layer. Pro
 
 ## The identity file
 
-Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create it on first run with mode 600. Read it before provisioning anything so you never buy the same thing twice.
+Everything the agent owns lives in one file: `~/.humanize/identity.json`. `python3 humanize.py init` creates it from `identity.template.json` with every key present and empty, mode 600, and starts the dashboard. Read it before provisioning anything so you never buy the same thing twice.
 
 ```json
 {
@@ -280,8 +280,7 @@ The agent needs a profile picture for every account and anywhere an avatar is as
 **Generate locally, no service needed.** `scripts/avatar.py` derives four colours and the ribbon shapes from a hash of the seed, so the same seed always gives the same mark.
 
 ```bash
-pip install pillow
-python3 scripts/avatar.py "Ari Vale" ~/.humanize/face.png 1024
+python3 humanize.py avatar "Ari Vale"        # installs Pillow if missing, writes ~/.humanize/face.png, records face.seed
 ```
 
 Store the path under `face.photo` and the seed under `face.seed` (the name at the time of generation). Upload it as the avatar on every account in Layer 6 and Layer 14. Never regenerate it once accounts carry it; if the human renames the agent, the mark stays, because `face.seed` does not change.
@@ -461,14 +460,16 @@ For an agent that will sign contracts, hold a bank account, or invoice under a c
 
 A person can look in a mirror. The agent gets one: a local web page that shows everything it is and has, lets the human switch layers on and off, edit the name, persona and rules, ask for changes, push the self to its repo, and jump back into the chat. Nothing leaves the machine.
 
-**Start it** as soon as the identity file exists, so the human can watch layers light up during the bootstrap:
+**Start it** with the identity, so the human can watch layers light up during the bootstrap:
 
 ```bash
-python3 scripts/dashboard.py            # serves http://127.0.0.1:4242 and opens it
-python3 scripts/dashboard.py --identity ~/.humanize/identity.json --port 4242 --no-open
+python3 humanize.py init                # creates the identity if missing, starts the dashboard in the background, opens it
+python3 humanize.py status              # is it running, what does the agent have
+python3 humanize.py stop
+python3 humanize.py dashboard --port 4242   # foreground, if the host prefers to manage the process
 ```
 
-Run it in the background (the host's background-command facility, or `nohup ... &`) and keep it running across sessions. It is stdlib Python, no install. The page must be served by it; opened as a file it shows a notice and nothing works.
+It is stdlib Python, no install, and keeps running across sessions. The page must be served by it; opened as a file it shows a notice and nothing works. `python3 humanize.py demo` shows a fully filled sample in a scratch home without touching the real identity.
 
 **What it shows.** The live avatar, name and persona (editable in place), DID. Copy rows for email, phone, USDC address, GitHub handle, booking link, domain. Layers grouped as Self, Reach, Money, World, each row with a status pip, its facts, an on/off switch, and a Provision or Modify button; click a row for the full detail. A composer to send the agent a request (Cmd+Enter sends). Rules, requests, activity. A "Self, stored" panel with the repo status and a Push button (Layer 23). Secrets are masked before they reach the browser and are never editable there.
 
@@ -506,8 +507,8 @@ A person does not evaporate when the laptop dies. The agent keeps its whole self
 ```bash
 # create a private repo on the agent's own GitHub, named self
 curl -s -X POST https://api.github.com/user/repos -H "Authorization: Bearer <github token>" -d '{"name":"self","private":true}'
-python3 scripts/self.py init https://github.com/<agent username>/self.git   # prints the self key once, encrypts, pushes
-python3 scripts/self.py status
+python3 humanize.py self init https://github.com/<agent username>/self.git   # prints the self key once, encrypts, pushes
+python3 humanize.py self status
 ```
 
 `self.py` reads the GitHub token from `GITHUB_TOKEN` or from `accounts.github.token` in the identity file. Store the repo URL under `self_repo.url`; `self.py` writes `self_repo.last_push` on every push. Hand the self key to the human once, in the chat, and never write it into the identity file.
@@ -515,7 +516,7 @@ python3 scripts/self.py status
 **Keep it current.** Push after every provisioning step and at the end of every session:
 
 ```bash
-python3 scripts/self.py push
+python3 humanize.py self push
 ```
 
 The dashboard's Push button does the same, and its Self panel shows whether local changes are unpushed.
@@ -526,7 +527,7 @@ The dashboard's Push button does the same, and its Self panel shows whether loca
 export HUMANIZE_SELF_KEY=<self key>
 curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/scripts/self.py -o self.py
 python3 self.py load https://github.com/<agent username>/self.git
-python3 ~/.humanize/self/scripts/dashboard.py
+python3 ~/.humanize/self/humanize.py init
 ```
 
 The agent is back: same name, same inbox, same number, same accounts, same avatar, same rules. Run `python3 self.py pull` on an existing machine to catch up with pushes made elsewhere.
@@ -551,9 +552,9 @@ Everything else, including every verification code, every 2FA setup, every accou
 
 Run this top to bottom on a fresh agent. No pauses, no keys to start. Write to the identity file after each line.
 
-1. `POST https://api.mailgent.dev/v0/agent-signup` with an empty body. Inbox, API key, DID, vault, calendar, USDC wallet, all at once. (Layers 0, 1, 13, 15, 4)
-2. Start the dashboard in the background and set `host.open_command`. The human can now watch. (Layer 22)
-3. Pick a name, check it is free on AgentMail and GitHub, write the persona. (Layer 0)
+1. Pick a name, check it is free on AgentMail and GitHub, write the persona. (Layer 0)
+2. `python3 humanize.py init --name "<name>" --persona "<persona>"`. This writes the identity file from the template, draws the avatar, detects the host for the chat button, and starts the dashboard in the background. The human can now watch. (Layers 0, 7, 22)
+3. `POST https://api.mailgent.dev/v0/agent-signup` with an empty body. Inbox, API key, DID, vault, calendar, USDC wallet, all at once. (Layers 1, 13, 15, 4)
 4. AgentMail sign-up with the Mailgent address as `human_email`, read the code from Mailgent, verify. (Layer 1)
 5. AgentPhone sign-up with the AgentMail address, read the code, verify, store key and number. (Layer 2)
 6. Pick an AgentPhone voice and set it on the agent. (Layer 8)

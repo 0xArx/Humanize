@@ -8,10 +8,19 @@ One skill, `humanize`, defined in `SKILL.md`. It gives an agent everything a per
 
 ## Install
 
-**Claude Code**
+**Anywhere**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh
+```
+
+That clones to `~/.humanize/app`, symlinks it into `~/.claude/skills/humanize` when Claude Code is present, and runs `humanize.py init`.
+
+**Claude Code, by hand**
 
 ```bash
 git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
+python3 ~/.claude/skills/humanize/humanize.py init
 ```
 
 Then `/humanize` or ask for anything the skill description covers.
@@ -51,12 +60,13 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 
 ## Dashboard
 
-`scripts/dashboard.py` serves `scripts/dashboard.html` and is the only thing in the repo with behaviour. Rules for it:
+`humanize.py` at the root is the entrypoint and must stay stdlib-only and dependency-free so `init` works on a bare machine. `scripts/dashboard.py` serves `scripts/dashboard.html`. Rules:
 
 - Stdlib only. No frameworks, no CDN, no build. It must open offline.
 - Secrets never reach the browser. Anything matching the `SECRET_KEYS` pattern is masked server-side; extend the pattern when you add a new secret field name to the identity schema.
 - Only fields matched by `ALLOWED` are writable from the page. Add a layer to `LAYERS` in the HTML when you add one to `SKILL.md`, with a `get` that reads the identity file paths that layer stores.
-- Test with a sample identity file, not the real one: `python3 scripts/dashboard.py --identity /tmp/sample.json --no-open`.
+- Test with a scratch home, never the real one: `HOME=/tmp/hz python3 humanize.py init --no-open`, or `python3 humanize.py demo`.
+- When you add a key to the identity schema, add it to `identity.template.json` too, and to `LAYERS` in the HTML if a layer should show it.
 - The avatar maths in `scripts/avatar.py` (palette from sha256, mulberry32 RNG, ribbon parameters) and in `dashboard.html` must stay identical, so the PNG and the live avatar match. Change both or neither.
 - `scripts/self.py` must never commit a plaintext identity. Test a round trip with `HOME` pointed at a scratch directory and a local bare repo before changing it.
 

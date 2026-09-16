@@ -71,11 +71,14 @@ def stage(k):
     for f in ("dashboard.py", "dashboard.html", "avatar.py", "self.py"):
         p = HERE / f
         if p.exists(): (REPO / "scripts" / f).write_bytes(p.read_bytes())
+    for f in ("humanize.py", "identity.template.json"):
+        p = HERE.parent / f
+        if p.exists(): (REPO / f).write_bytes(p.read_bytes())
     (REPO / "README.md").write_text(
         "# self\n\nThis is a Humanize agent. identity.json is encrypted with the self key.\n\n"
         "Load on a new machine:\n\n```bash\nexport HUMANIZE_SELF_KEY=<self key>\n"
         "python3 -c \"$(curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/scripts/self.py)\" load <this repo url>\n"
-        "python3 ~/.humanize/self/scripts/dashboard.py\n```\n")
+        "python3 ~/.humanize/self/humanize.py init\n```\n")
     (REPO / ".gitignore").write_text("*.key\nidentity.json\n")
 
 def note(**kw):
@@ -117,7 +120,7 @@ def cmd_load(url):
     sh("git", "clone", "-q", "-b", "main", authed(url), str(REPO))
     decrypt(REPO / "identity.json.enc", IDENTITY, key())
     if (REPO / "face.png").exists(): FACE.write_bytes((REPO / "face.png").read_bytes())
-    print("loaded. identity at", IDENTITY, "\nstart the dashboard: python3", REPO / "scripts/dashboard.py")
+    print("loaded. identity at", IDENTITY, "\nstart the dashboard: python3", REPO / "humanize.py", "init")
 
 def cmd_status():
     out = {"repo": str(REPO), "initialized": (REPO / ".git").exists()}
