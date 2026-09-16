@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humanize</title>
+<style>
+  :root {
+    --bg: #f4f2ec; --panel: #ffffff; --ink: #1c1b18; --muted: #6b6860; --line: #e2dfd6;
+    --on: #1f8a5b; --off: #b6b2a8; --warn: #c8781c; --accent: #2b4bd6; --accent-ink: #fff; --chip: #eeece5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #16171a; --panel: #1f2125; --ink: #ecebe6; --muted: #9a9890; --line: #2e3036; --chip: #2a2c31; --off: #4a4c52; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 24px 16px 64px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .avatar { width: 88px; height: 88px; border-radius: 22px; background: var(--chip); object-fit: cover; flex: none; }
+  .who { flex: 1; min-width: 240px; }
+  .who input, .who textarea { width: 100%; background: transparent; border: 1px solid transparent; color: var(--ink); border-radius: 8px; padding: 4px 8px; font: inherit; }
+  .who input { font-size: 24px; font-weight: 700; }
+  .who input:hover, .who textarea:hover, .who input:focus, .who textarea:focus { border-color: var(--line); background: var(--panel); outline: none; }
+  .who textarea { resize: vertical; min-height: 40px; color: var(--muted); }
+  .did { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 14px; border-radius: 10px; font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.small { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+  .quick { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
+  .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; display: flex; gap: 8px; align-items: center; font-size: 13px; max-width: 100%; min-width: 0; }
+  .pill b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .pill > span:first-child, .pill button { flex: none; }
+  .pill button { padding: 2px 8px; font-size: 11px; border-radius: 999px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .card.disabled { opacity: .55; }
+  .card h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .num { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; margin-left: auto; }
+  .dot.on { background: var(--on); } .dot.partial { background: var(--warn); }
+  .desc { color: var(--muted); font-size: 12px; margin: 0; }
+  .facts { margin: 0; padding: 0; list-style: none; font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+  .facts li { display: flex; gap: 6px; align-items: baseline; }
+  .facts li span:first-child { color: var(--muted); flex: none; min-width: 70px; }
+  .facts li span:last-child { word-break: break-all; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: auto; padding-top: 6px; }
+  .switch { position: relative; width: 36px; height: 20px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: var(--off); border-radius: 999px; transition: .15s; cursor: pointer; }
+  .switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .15s; }
+  .switch input:checked + span { background: var(--on); }
+  .switch input:checked + span::before { transform: translateX(16px); }
+  .row .lbl { font-size: 12px; color: var(--muted); }
+  .row button { margin-left: auto; }
+  section { margin-top: 28px; }
+  section h2 { font-size: 15px; margin: 0 0 10px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+  textarea.box { width: 100%; min-height: 96px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; color: var(--ink); font: inherit; resize: vertical; }
+  .list { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; max-height: 260px; overflow: auto; font-size: 12px; }
+  .list div { padding: 5px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
+  .list div:last-child { border-bottom: 0; }
+  .list time { color: var(--muted); flex: none; }
+  .list .done { text-decoration: line-through; color: var(--muted); }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .foot { color: var(--muted); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="avatar" id="avatar" alt="" src="/avatar" onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">
+    <div class="who">
+      <input id="name" placeholder="Unnamed agent" title="Click to rename">
+      <textarea id="persona" placeholder="Persona. Click to edit." rows="2"></textarea>
+      <div class="did" id="did"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="chat">Chat</button>
+      <button id="refresh">Refresh</button>
+    </div>
+  </header>
+
+  <div class="quick" id="quick"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <section>
+    <div class="two">
+      <div>
+        <h2>Ask the agent</h2>
+        <textarea class="box" id="req" placeholder="Anything. &quot;Get a UK number.&quot; &quot;Change my name to Mira Chen.&quot; &quot;Turn off Reddit.&quot; The agent reads this at its next turn."></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px"><button class="primary" id="send">Send to agent</button><button id="sendchat">Send and open chat</button></div>
+        <div class="list" id="reqs" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <h2>Rules</h2>
+        <textarea class="box" id="rules" placeholder="One rule per line. Empty means no rules."></textarea>
+        <div style="margin-top:8px"><button id="saverules">Save rules</button></div>
+        <h2 style="margin-top:20px">Log</h2>
+        <div class="list" id="log"></div>
+      </div>
+    </div>
+  </section>
+  <p class="foot" id="foot"></p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const LAYERS = [
+  { n: 0,  t: "Identity",      d: "Name, persona, DID.",                         get: i => [["name", i.name], ["did", i.did]] },
+  { n: 1,  t: "Email",         d: "Mailgent and AgentMail inboxes.",            get: i => [["mailgent", g(i,"email.mailgent.address")], ["agentmail", g(i,"email.agentmail.address")]] },
+  { n: 2,  t: "Phone",         d: "SMS, voice, OTPs.",                          get: i => [["agentphone", g(i,"phone.agentphone.number")], ["dial", g(i,"phone.dial.number")]] },
+  { n: 3,  t: "Messaging",     d: "WhatsApp, Telegram, Discord, Slack, iMessage.", get: i => Object.keys(i.messaging||{}).map(k => [k, "connected"]).concat(g(i,"whatsapp.status") ? [["whatsapp", g(i,"whatsapp.status")]] : []) },
+  { n: 4,  t: "Money",         d: "x402 wallet, more wallets, Stripe, card.",   get: i => [["usdc base", g(i,"wallet.mailgent_base_usdc")], ["evm", g(i,"wallet.evm.address")], ["solana", g(i,"wallet.solana.address")], ["stripe", g(i,"accounts.stripe") ? "connected" : null], ["card", g(i,"card.status")]] },
+  { n: 5,  t: "Hands",         d: "Which browser it drives.",                   get: i => [["browser", g(i,"browser.provider")]] },
+  { n: 6,  t: "Accounts",      d: "GitHub, Vercel, Supabase, and more.",        get: i => Object.entries(i.accounts||{}).map(([k,v]) => [k, v.username || v.handle || (v.enabled===false ? "off" : "connected")]) },
+  { n: 7,  t: "Avatar",        d: "The squiggle mark.",                         get: i => [["file", g(i,"face.photo")]] },
+  { n: 8,  t: "Voice",         d: "Same voice on calls and notes.",             get: i => [["agentphone", g(i,"voice.agentphone")], ["elevenlabs", g(i,"voice.elevenlabs")]] },
+  { n: 9,  t: "Eyes",          d: "Search, scrape, weather, local.",            get: i => [["orthogonal", g(i,"orthogonal.api_key") ? "key set" : null]] },
+  { n: 10, t: "Computer",      d: "Its own machine.",                           get: i => [["provider", g(i,"computer.provider")], ["id", g(i,"computer.id")], ["ssh", g(i,"ssh.public_key") ? "key set" : null]] },
+  { n: 11, t: "Memory",        d: "Notes, people, files.",                      get: i => [["supabase", g(i,"memory.supabase")], ["repo", g(i,"memory.repo")]] },
+  { n: 12, t: "Brain",         d: "Extra models.",                              get: i => Object.keys(i.brain||{}).map(k => [k, "key set"]) },
+  { n: 13, t: "Keys and 2FA",  d: "Vault and authenticator.",                   get: i => [["vault", g(i,"email.mailgent.api_key") ? "mailgent" : null]] },
+  { n: 14, t: "Social",        d: "X, LinkedIn, Reddit, more.",                 get: i => Object.entries(i.social||{}).map(([k,v]) => [k, v.handle ? "@"+v.handle : "connected"]) },
+  { n: 15, t: "Calendar",      d: "Calendar and booking page.",                 get: i => [["booking", g(i,"calendar.booking_url")], ["calendar", g(i,"email.mailgent.address") ? "mailgent" : null]] },
+  { n: 16, t: "Address",       d: "Street address and mail.",                   get: i => [["address", [g(i,"address.line1"), g(i,"address.city")].filter(Boolean).join(", ") || null]] },
+  { n: 17, t: "Domain",        d: "Domain, site, own-domain email.",            get: i => [["domain", g(i,"domain.name")]] },
+  { n: 18, t: "Signatures",    d: "E-sign and documents.",                      get: i => [["esign", g(i,"accounts.esign") ? "connected" : null]] },
+  { n: 19, t: "Verify others", d: "OTP, identity, sanctions checks.",           get: i => [["didit", g(i,"orthogonal.api_key") ? "via orthogonal" : null]] },
+  { n: 20, t: "Contacts",      d: "Find and enrich people.",                    get: i => [["people", g(i,"memory.supabase") ? "table ready" : null]] },
+  { n: 21, t: "Entity",        d: "A company, if wanted.",                      get: i => [["entity", g(i,"entity.name")]] },
+];
+const g = (o, p) => p.split(".").reduce((a, k) => (a && a[k] !== undefined ? a[k] : null), o);
+const $ = s => document.querySelector(s);
+let ID = {}, MTIME = 0;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1800); }
+function copy(s) { navigator.clipboard.writeText(s).then(() => toast("Copied")); }
+
+function render() {
+  const i = ID;
+  if (document.activeElement !== $("#name")) $("#name").value = i.name || "";
+  if (document.activeElement !== $("#persona")) $("#persona").value = i.persona || "";
+  $("#did").textContent = i.did || "";
+  if (document.activeElement !== $("#rules")) $("#rules").value = (i.rules || []).join("\n");
+
+  const quick = [["Email", g(i,"email.agentmail.address") || g(i,"email.mailgent.address")], ["Phone", g(i,"phone.agentphone.number")], ["USDC", g(i,"wallet.mailgent_base_usdc")], ["GitHub", g(i,"accounts.github.username")], ["Booking", g(i,"calendar.booking_url")]].filter(x => x[1]);
+  $("#quick").innerHTML = quick.map(([k,v]) => `<div class="pill"><span>${k}</span><b>${esc(v)}</b><button onclick="copy(${JSON.stringify(v)})">copy</button></div>`).join("");
+
+  $("#grid").innerHTML = LAYERS.map(L => {
+    const facts = (L.get(i) || []).filter(f => f[1]);
+    const enabled = g(i, `layers.${L.n}.enabled`) !== false;
+    const status = facts.length === 0 ? "" : (facts.length >= (L.get(i)||[]).length ? "on" : "partial");
+    return `<div class="card ${enabled ? "" : "disabled"}">
+      <h3><span class="num">${L.n}</span>${L.t}<span class="dot ${status}" title="${status || "not provisioned"}"></span></h3>
+      <p class="desc">${L.d}</p>
+      <ul class="facts">${facts.map(([k,v]) => `<li><span>${k}</span><span>${esc(String(v))}</span></li>`).join("") || "<li><span style='color:var(--muted)'>not provisioned</span></li>"}</ul>
+      <div class="row">
+        <label class="switch"><input type="checkbox" ${enabled ? "checked" : ""} onchange="setLayer(${L.n}, this.checked)"><span></span></label>
+        <span class="lbl">${enabled ? "in use" : "off"}</span>
+        <button class="small" onclick="ask(${JSON.stringify(facts.length ? `Update layer ${L.n} (${L.t}): ` : `Provision layer ${L.n} (${L.t})`)}, ${facts.length ? "true" : "false"})">${facts.length ? "Modify" : "Provision"}</button>
+      </div></div>`;
+  }).join("");
+
+  const reqs = (i.dashboard_requests || []).map((r, idx) => ({ ...r, idx })).reverse();
+  $("#reqs").innerHTML = reqs.map(r => `<div class="${r.done ? "done" : ""}"><time>${fmt(r.at)}</time><span style="flex:1">${esc(r.text)}</span>${r.done ? "" : `<button class="small" onclick="done(${r.idx})">done</button>`}</div>`).join("") || "<div style='color:var(--muted)'>No requests yet.</div>";
+  const log = (i.log || []).slice(-40).reverse();
+  $("#log").innerHTML = log.map(l => `<div><time>${fmt(l.at)}</time><span>${esc(l.did || "")}${l.cost ? " · " + esc(l.cost) : ""}</span></div>`).join("") || "<div style='color:var(--muted)'>Nothing yet.</div>";
+  $("#foot").textContent = `Host: ${g(i,"host.app") || "unknown"} · identity file updates every 3s · secrets are masked here and never leave your machine`;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = t => t ? new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+
+async function load() {
+  try {
+    const j = await api("/api/identity");
+    if (j.mtime !== MTIME) { ID = j.identity; MTIME = j.mtime; render(); $("#avatar").src = "/avatar?" + MTIME; }
+  } catch (e) { toast(e.message); }
+}
+async function set(path, value) { await api("/api/update", { path, value }); toast("Saved"); MTIME = 0; load(); }
+window.setLayer = (n, on) => set(`layers.${n}.enabled`, on).then(() => api("/api/request", { text: `${on ? "Turn on" : "Turn off"} layer ${n} (${LAYERS[n].t}).` }));
+window.ask = (prefill, edit) => { const b = $("#req"); b.value = prefill; b.focus(); if (!edit) send(); };
+window.done = async idx => { await api("/api/request/done", { index: idx }); MTIME = 0; load(); };
+async function send() { const t = $("#req").value.trim(); if (!t) return; await api("/api/request", { text: t }); $("#req").value = ""; toast("Sent. The agent will see it on its next turn."); MTIME = 0; load(); }
+async function chat() { try { await api("/api/chat", {}); toast("Opening chat"); } catch (e) { toast(e.message); } }
+
+$("#name").addEventListener("change", e => set("name", e.target.value.trim()));
+$("#persona").addEventListener("change", e => set("persona", e.target.value.trim()));
+$("#saverules").onclick = () => set("rules", $("#rules").value.split("\n").map(s => s.trim()).filter(Boolean));
+$("#send").onclick = send;
+$("#sendchat").onclick = async () => { await send(); chat(); };
+$("#chat").onclick = chat;
+$("#refresh").onclick = () => { MTIME = 0; load(); };
+load(); setInterval(load, 3000);
+</script>
+</body>
+</html>
