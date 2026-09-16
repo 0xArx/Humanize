@@ -14,18 +14,17 @@ One skill, `humanize`, defined in `SKILL.md`. It gives an agent everything a per
 git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
 ```
 
-Then `/humanize` or ask for anything the skill description covers. Requires the `orth` CLI and `ORTHOGONAL_API_KEY` set.
+Then `/humanize` or ask for anything the skill description covers.
 
 **Other agents (Cursor, Codex, OpenClaw, custom)**
 
-Paste `SKILL.md` into the system prompt or rules file. Give the agent shell access and the `orth` CLI. That is all it needs.
+Paste `SKILL.md` into the system prompt or rules file and give the agent shell access. That is all it needs to start.
 
 ## Prerequisites the agent needs at runtime
 
-- `orth` CLI on PATH with `ORTHOGONAL_API_KEY` exported. Install: see orthogonal.sh.
-- Orthogonal credit balance above zero. Check with `orth balance`.
-- Shell access to create `~/.humanize/identity.json`.
-- A human reachable for the one-time AgentPhone OTP and for any spend approval.
+- Shell access, Node 18+, Python 3 with Pillow. That is enough for the base identity (Layers 0 to 2, 6 to 8, 11, 13, 15).
+- `orth` CLI on PATH with `ORTHOGONAL_API_KEY` exported for Layers 9, 12, 19, 20 and the Notte fallback. Check credit with `orth balance`.
+- No human needs to be present for setup. The Human touchpoints table in `SKILL.md` lists the few later steps that do.
 
 ## How the skill is organised
 
@@ -35,7 +34,7 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 
 ## Adding a new layer or recipe
 
-1. Search Orthogonal first: `orth search "<capability>"`. If a provider exists, the recipe uses `orth run`, not raw curl. If not, go direct to the vendor and write the raw endpoint. The skill is not limited to Orthogonal.
+1. Prefer an agent-native provider: one where the agent signs itself up with its own email or number and gets a key back with no person involved. Then Orthogonal (`orth search "<capability>"`). Then a direct vendor API. Name any human step explicitly and add it to the Human touchpoints table.
 2. Run every command you write down. Paste real parameter names from `orth api show <slug> <path>`. Do not guess.
 3. State the cost. If it is not free, say the number.
 4. Say what goes into the identity file and under which key.
@@ -48,7 +47,7 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 - No secrets in the repo. The identity file lives at `~/.humanize/`, never here. Example values in docs are placeholders.
 - No em dashes anywhere in the repo.
 - The skill ships with no rules of its own. Rules come from the human at step 7 and live in the identity file. Do not hardcode restrictions into a layer.
-- Do not add a dependency, script, or package manifest. If the skill needs a helper, it goes in `scripts/` as a plain shell file and gets referenced from `SKILL.md`.
+- Do not add a package manifest or build step. Helpers go in `scripts/` as single-file Python or shell with at most one pip dependency, and get referenced from `SKILL.md`.
 
 ## Commit style
 

@@ -1,6 +1,6 @@
 ---
 name: humanize
-description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, and a legal entity. Uses Orthogonal where it has a provider and goes direct to vendors everywhere else. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
+description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, and a legal entity. Agent-native providers (Mailgent, AgentMail, AgentPhone, Dial) let the agent sign itself up with no human and no key; Orthogonal covers the world-facing layers. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
 ---
 
 # Humanize
@@ -17,15 +17,22 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
 {
   "name": "Ari Vale",
   "persona": "Software engineer, direct, writes short emails.",
-  "email": { "provider": "agentmail", "address": "ari.vale@agentmail.to", "inbox_id": "ari.vale@agentmail.to" },
-  "phone": { "provider": "agentphone", "number": "+14155550123", "number_id": "...", "agent_id": "...", "api_key": "..." },
+  "did": "did:key:z6Mk...",
+  "email": {
+    "mailgent": { "address": "bright-otter-k3f9@mailgent.dev", "api_key": "mgnt-..." },
+    "agentmail": { "address": "ari.vale@agentmail.to", "api_key": "am_..." }
+  },
+  "phone": {
+    "agentphone": { "number": "+14155550123", "number_id": "...", "agent_id": "...", "api_key": "..." },
+    "dial": { "number": "+44...", "auth": "~/.local/share/dial/auth.json" }
+  },
   "whatsapp": { "status": "pending", "number": "+14155550123" },
   "card": { "status": "not_provisioned" },
   "browser": { "provider": "claude-browser" },
   "face": { "photo": "~/.humanize/face.png" },
-  "voice": { "elevenlabs": "voice_id" },
+  "voice": { "agentphone": "voice_id", "elevenlabs": "voice_id" },
   "messaging": { "telegram": { "token": "..." }, "discord": { "token": "..." } },
-  "wallet": { "evm": { "address": "0x..." }, "solana": { "address": "..." } },
+  "wallet": { "mailgent_base_usdc": "0x...", "evm": { "address": "0x..." }, "solana": { "address": "..." } },
   "computer": { "provider": "smolmachines", "id": "..." },
   "memory": { "supabase": "project_ref" },
   "social": { "x": { "handle": "arivale", "token": "..." } },
@@ -34,7 +41,7 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "domain": { "name": "arivale.com", "registrar": "vercel" },
   "rules": [],
   "accounts": {
-    "github": { "username": "arivale", "token": "ghp_...", "password": "...", "totp_secret": "...", "created": "2026-09-16" },
+    "github": { "username": "arivale", "vault": "github", "created": "2026-09-16" },
     "vercel": { "token": "...", "team_id": "..." },
     "supabase": { "pat": "sbp_...", "org_id": "..." }
   },
@@ -46,7 +53,10 @@ Every credential the agent earns goes in here. Every cost goes in `log`. `rules`
 
 ## Discovery rule
 
-Before provisioning any capability, search Orthogonal. It is the marketplace this skill is built on, and new providers show up there first.
+Two kinds of provider, in this order of preference:
+
+1. **Agent-native.** Services built so the agent signs itself up with one API call and no human: Mailgent, AgentMail, AgentPhone, Dial. These need no key to start. The base identity (Layers 0 to 2, 7, 8, 13, 15) uses only these.
+2. **Orthogonal.** The marketplace for everything world-facing: search, scrape, people lookup, image models, voices, microVMs. One key, many providers. Needed from Layer 9 onward, not before.
 
 ```bash
 export ORTHOGONAL_API_KEY=<key>
@@ -57,92 +67,86 @@ orth run <slug> <path> --body '{...}'   # call it
 orth skills search "<task>"             # find a ready-made skill instead
 ```
 
-If Orthogonal has it, use it through `orth run`. If it does not, go direct: sign up with the vendor through Layer 6 and call their API with the key from the identity file. Nothing in this skill is limited to Orthogonal. If there is no API at all, use the browser layer.
+Before adding any provider to this file, ask: can the agent sign up for it alone, with its own email and number, and get a key back without a person clicking anything? If yes, it goes first in its layer. If no, it goes last and the human step is named.
 
 ## Layer 0: Identity
 
-Before anything else, the agent needs a name and a persona. Do not wait for the human. Pick a plausible full name that is free as a username on GitHub and as a local part on AgentMail (check both), write a two-line persona, and continue. The human can rename it later. Keep it consistent everywhere: inbox display name, phone agent name, GitHub username, email signature.
+Before anything else, the agent needs a name, a persona, and a cryptographic identity. Do not wait for the human.
 
-Write `name` and `persona` to the identity file. Every later layer reads them.
+1. Pick a plausible full name. Check the local part is free on Mailgent and AgentMail and the handle is free on GitHub. Write a two-line persona. The human can rename it later.
+2. Get a DID and signing keypair from Mailgent's signup below (Layer 1). That is the agent's verifiable identity: it can sign statements, prove it is the same agent across services, and log in with its own key where a service supports it.
 
-## Layer 1: Email (AgentMail)
+Keep the name consistent everywhere: inbox display name, phone agent name, GitHub username, email signature. Store `name`, `persona`, and `did` in the identity file.
 
-The inbox is the root of everything. Almost every sign-up sends a code or a link here.
+## Layer 1: Email
 
-**Provision**
+The inbox is the root of everything. Almost every sign-up sends a code or a link here. Two agent-native providers; use the first to bootstrap and the second for a proper address.
 
-```bash
-orth run agentmail /v0/inboxes --body '{"username":"ari.vale","display_name":"Ari Vale"}'
-```
-
-Cost: $2 per month per inbox. Inboxes idle for 30 days are deleted, so any read resets the timer. Store `inbox_id` (it is the email address itself) in the identity file.
-
-**Read**
+**Mailgent: zero-input signup.** One call, no email, no human, nothing to verify. Returns an address, an API key, a DID with an Ed25519 keypair, an encrypted vault, a calendar, and a USDC wallet on Base.
 
 ```bash
-orth run agentmail "/v0/inboxes/<inbox_id>/messages" -q limit=10 -q labels=unread
-orth run agentmail "/v0/inboxes/<inbox_id>/messages/<message_id>"
+curl -X POST https://api.mailgent.dev/v0/agent-signup -d '{}'
+# store: email, api key (mgnt-...), did, wallet address
+npm install -g @mailgent-dev/cli && export MAILGENT_API_KEY=mgnt-...
+mailgent whoami
+mailgent mail list --labels inbox --limit 20
+mailgent mail send --to a@b.com --subject "Hi" --text "Hello"
 ```
 
-**Send**
+MCP server for hosts that prefer tools over shell: `https://api.mailgent.dev/mcp`. This address is the `human_email` the agent gives to every other agent-native signup below, so every OTP lands in an inbox the agent already reads.
 
-```bash
-orth run agentmail "/v0/inboxes/<inbox_id>/messages/send" --body '{"to":["x@y.com"],"subject":"...","text":"..."}'
+**AgentMail: the address people see.** Free tier is 3 inboxes and 3,000 emails a month. Signup is one SDK call; the OTP goes to whatever `human_email` you pass, so pass the Mailgent address and read it there.
+
+```python
+from agentmail import AgentMail
+c = AgentMail()                                   # no key yet
+r = c.agent.sign_up(human_email="<mailgent address>", username="ari.vale")
+# r.api_key, r.inbox_id (ari.vale@agentmail.to). Until verified it can only email the signup address.
+# read the 6-digit code from the Mailgent inbox, then:
+AgentMail(api_key=r.api_key).agent.verify(otp_code="123456")
 ```
 
-Reply, reply-all, forward, drafts, and threads are all under the same slug. `orth api show agentmail` lists them.
+After verify the inbox is unrestricted. Custom domains (Layer 17) attach here. Read, send, reply, threads, drafts: `https://docs.agentmail.to/api-reference`, or through Orthogonal with `orth run agentmail ...` once that key exists.
 
 **Waiting for a verification code**
 
 Poll unread messages every 5 seconds for up to 2 minutes. Match the sender domain to the service you just signed up for. Extract the 6 to 8 digit code or the first link containing `verify`, `confirm`, or `activate`. Mark the message read once used.
 
-## Layer 2: Phone (AgentPhone)
+## Layer 2: Phone
 
-A US or Canadian number that can receive SMS, send SMS, and make and take voice calls.
+A real number that receives SMS, sends SMS, and makes and takes voice calls. Both providers below sign the agent up with an email OTP that lands in Layer 1. No human.
 
-**First-time account setup.** AgentPhone sends a one-time code to an email address and returns an API key, a starter agent, and a number in one shot. Give it the agent's own inbox from Layer 1, then read the code out of that inbox. No human in the loop.
-
-```bash
-orth run agentphone /v0/agent/sign-up --body '{"human_email":"ari.vale@agentmail.to","agent_name":"Ari Vale"}'
-# returns verification_id. Poll Layer 1 for the code:
-orth run agentmail "/v0/inboxes/ari.vale@agentmail.to/messages" -q labels=unread -q limit=5
-# extract the 6-digit code from the AgentPhone message, then:
-orth run agentphone /v0/agent/verify --body '{"verification_id":"...","otp_code":"123456"}'
-# returns api_key, agent_id, number. Store all three.
-```
-
-**Extra numbers**
+**AgentPhone.** US or CA numbers, hosted voice agents, $5 signup credit that covers the first month of the starter number, then $3 a month per number.
 
 ```bash
-orth run agentphone /v1/numbers --body '{"country":"US","areaCode":"415","agentId":"<agent_id>"}'
+curl -X POST https://api.agentphone.ai/v0/agent/sign-up -d '{"human_email":"<agent email from Layer 1>","agent_name":"Ari Vale"}'
+# returns verification_id (10-minute expiry). Read the 6-digit code from the Layer 1 inbox, then:
+curl -X POST https://api.agentphone.ai/v0/agent/verify -d '{"verification_id":"...","otp_code":"123456"}'
+# returns account_id, agent_id, number_id, phone_number, api_key (shown once). Store all of it.
 ```
 
-Cost: $3 per month per number.
+Then with `Authorization: Bearer <api_key>` on `https://api.agentphone.ai`:
 
-**Receive SMS**
+| Do | Call |
+|----|------|
+| Read inbound SMS (OTPs) | `GET /v1/numbers/<number_id>/messages` |
+| Send SMS | `POST /v1/messages {agent_id, to_number, body}` |
+| Make a call | `POST /v1/calls {agentId, toNumber, systemPrompt, initialGreeting}` then `GET /v1/calls/<callId>` for transcript |
+| Pick a voice | `GET /v1/agents/voices` then `PATCH /v1/agents/<agentId> {voice}` |
+| Push inbound to you | `POST /v1/agents/<agentId>/webhook` |
+| Extra number | `POST /v1/numbers {country, areaCode, agentId}` |
+
+First SMS to a new contact must say who is sending, confirm opt-in, and say how to opt out, or carriers drop it.
+
+**Dial (getdial.ai).** Same self-signup shape, 200+ countries, and iMessage. $5 signup credit, $3 a month per number plus usage.
 
 ```bash
-orth run agentphone "/v1/numbers/<number_id>/messages"
+npm install -g @getdial/cli
+dial auth login <agent email from Layer 1>        # OTP to the inbox, then SMS code to the new number; key saved to ~/.local/share/dial/auth.json
+dial wait-for message.received -f channel=sms      # blocks until an OTP arrives
 ```
 
-Same polling rule as email. Most OTPs arrive within 30 seconds.
-
-**Send SMS**
-
-```bash
-orth run agentphone /v1/messages --body '{"agent_id":"...","to_number":"+1...","body":"..."}'
-```
-
-The first message to any new contact must state who is sending, confirm they opted in, and say how to opt out. Carriers drop messages that skip this.
-
-**Make a call**
-
-```bash
-orth run agentphone /v1/calls --body '{"agentId":"...","toNumber":"+1...","systemPrompt":"You are Ari calling to confirm a dentist appointment for Tuesday at 3pm.","initialGreeting":"Hi, this is Ari."}'
-orth run agentphone "/v1/calls/<callId>"    # poll for transcript
-```
-
-Voices come from `GET /v1/agents/voices`. Set a webhook with `POST /v1/agents/<agentId>/webhook` if you want inbound calls and texts pushed to you instead of polled.
+Use AgentPhone as the primary US number and Dial when the task needs a non-US number or iMessage. Store each under `phone.<provider>`.
 
 ## Layer 3: Messaging (WhatsApp, Telegram, Discord, Slack, iMessage)
 
@@ -156,28 +160,41 @@ Humans are reachable on more than email and SMS. Each of these is one account pl
 
 **Slack.** Sign up at `slack.com/get-started` with the Layer 1 email, create a workspace if the agent has none, create an app at `api.slack.com/apps`, install it, store the bot token (`xoxb-`) under `slack`. Send with `POST https://slack.com/api/chat.postMessage`.
 
-**iMessage.** Only from a Mac the agent controls. If the host is macOS with computer use, create an Apple ID at `account.apple.com` with the Layer 1 email and Layer 2 number (both codes arrive automatically), then sign into Messages with it. Otherwise skip.
+**iMessage.** Dial from Layer 2 sends and receives iMessage on its number with no Apple ID. Use that. Only fall back to a Mac with computer use and an Apple ID if Dial is not set up.
 
 Store each under `messaging.<service>` with the token and the handle.
 
 ## Layer 4: Money
 
-A human can pay, get paid, and hold value. Do these in the order below: the first needs nobody, the second needs the human once, the third depends on the second.
+A human can pay, get paid, and hold value. Ordered by how little the human has to do.
 
-**Hold value: a crypto wallet.** Zero sign-up. Generate a keypair locally and store it in the identity file:
+**Pay per request with x402: nothing to sign up for.** The Mailgent signup in Layer 1 already gave the agent a USDC wallet on Base. Any API or site that speaks x402 answers `402 Payment Required` with a price; the agent pays from the wallet and retries. No account, no card, no invoice.
 
 ```bash
-# Ethereum and every EVM chain
+mailgent pay <x402-protected URL>
+mailgent activity                                  # everything sent and received
+```
+
+A growing share of agent-facing APIs take x402. Check for it before signing up anywhere that charges. The human funds the wallet address once with USDC on Base; that is the only touch.
+
+**Hold value: more wallets.** Zero sign-up, generated locally, for chains Mailgent does not cover:
+
+```bash
 node -e "const w=require('ethers').Wallet.createRandom();console.log(JSON.stringify({address:w.address,privateKey:w.privateKey,mnemonic:w.mnemonic.phrase}))"
-# Solana
 solana-keygen new --no-bip39-passphrase -o ~/.humanize/solana.json
 ```
 
-Store under `wallet.evm` and `wallet.solana`. Read balances and send with any RPC (Alchemy, Helius, public endpoints). Coinbase AgentKit and Solana Agent Kit wrap the common actions. The human funds the address once and the agent can pay anything that takes crypto from then on.
+Store under `wallet.evm` and `wallet.solana`. Coinbase AgentKit and Solana Agent Kit wrap the common actions.
 
-**Get paid: Stripe.** The agent signs up at `dashboard.stripe.com/register` with its own email through Layer 6 and stores the secret key under `accounts.stripe`. Test mode works immediately. Live payouts need identity and bank details for a real person or a Layer 21 entity; that is the one part of this layer the agent hands to the human, and it does so with the exact form URL and nothing else left to do.
+**Get paid: Stripe.** The agent signs up at `dashboard.stripe.com/register` with its own email through Layer 6. Test mode works immediately; store the key under `accounts.stripe`. Live payouts need identity and bank details for a person or a Layer 21 entity; the agent fills everything else and hands the human the exact form URL.
 
-**Pay: a card.** No issuer is on Orthogonal yet. Once the Stripe account above is live, `POST /v1/issuing/cards` gives the agent a virtual card with a limit. Lithic (`POST https://api.lithic.com/v1/cards`) is the direct alternative. Store the card token under `card`, never the PAN. Log every spend in `log` with amount and purpose. Until a card exists, the agent pays with the wallet where crypto is accepted and reports the rest as pending.
+**Pay anywhere a card is required.** Card networks require a verified person or company behind every card, so this is the one thing in Money the agent cannot get alone. Least human effort first:
+
+- **AgentWallet** (`api.agentwallet.ai`): the human verifies once (about 3 minutes, no card). After that one `POST /v1/wallets {agent, principal, caps:{daily_usd}}` returns a Visa or Mastercard virtual card, a fiat balance, a USDC balance, plus a spare inbox and number. Free to provision.
+- **AgentCard** (`npm i -g agentcard`): `agentcard signup --email <agent email>` then the human runs `agentcard setup` once for identity and payment method. After that the agent issues single-use cards with `agentcard request new --amount 25`.
+- **Stripe Issuing** on the Stripe account above once it is live.
+
+Store the card token under `card`, never the PAN. Log every spend in `log`. Until a card exists, pay with x402 or the wallet and report the rest as pending.
 
 ## Layer 5: Hands (browser)
 
@@ -223,7 +240,7 @@ Every account follows the same shape. Do the steps in order and write to the ide
 2. Look for an API or CLI sign-up path. Prefer it over the browser.
 3. Sign up using the agent's own email (Layer 1) and phone (Layer 2). Never the user's.
 4. Poll Layer 1 (email) or Layer 2 (SMS) for the code or link. Complete verification. Do not ask the human for a code; it is always in one of the agent's own inboxes.
-5. Create the narrowest API token that does the job. Name it `humanize-<agent name>`.
+5. Create the narrowest API token that does the job. Name it `humanize-<agent name>`. If the service offers TOTP, enable it now and put the secret in the Layer 13 vault.
 6. Verify the token with a real read call.
 7. Store username, token, and creation date in the identity file. Log any cost.
 
@@ -256,26 +273,43 @@ Run `orth search "<service>"` first. If it is there, the account may not even be
 
 The agent needs a profile picture for every account and anywhere an avatar is asked for. It is not a human face. It is an abstract mark: a dense arrangement of squiggles, lines, loops, and curves, unique to this agent, used the same way a person uses one photo everywhere.
 
-**Generate once, reuse everywhere.**
+**Generate locally, no service needed.** `scripts/avatar.py` in this repo draws the mark from the agent's name as a seed, so the same name always produces the same mark.
+
+```bash
+pip install pillow
+python3 scripts/avatar.py "Ari Vale" ~/.humanize/face.png 1024
+```
+
+**Or with an image model** if the human wants a richer look (needs an Orthogonal key):
 
 ```bash
 orth run nano-banana "/v1beta/models/gemini-2.5-flash-image:generateContent" --body '{"contents":[{"parts":[{"text":"Abstract avatar. A complex arrangement of hand-drawn squiggles, tangled lines, loops, arcs and scribbles, layered and overlapping, filling the frame. Two or three colours on a plain flat background. No face, no figure, no letters, no text, no objects. Flat vector style, clean edges, works at 64px."}]}],"generationConfig":{"responseModalities":["IMAGE"],"imageConfig":{"aspectRatio":"1:1"}}}'
 ```
 
-Vary the colours and line density per agent so two agents never share a mark. Decode the base64, save to `~/.humanize/face.png`, and upload it as the avatar on every account in Layer 6 and Layer 14. Store the path under `face.photo`. Never regenerate it once accounts carry it; the mark is how people recognise the agent across services.
+Upload it as the avatar on every account in Layer 6 and Layer 14. Store the path under `face.photo`. Never regenerate it once accounts carry it; the mark is how people recognise the agent across services.
 
 ## Layer 8: Voice
 
-Layer 2 gives the agent a voice on phone calls. This layer gives it one voice everywhere: calls, voice notes, voice messages on WhatsApp and Telegram.
+One voice everywhere: calls, voice notes, voice messages on WhatsApp and Telegram.
+
+**No extra signup.** AgentPhone ships with a voice library. Pick one and set it on the agent:
 
 ```bash
-orth run elevenlabs /v1/voices                       # pick one, or
-orth run elevenlabs /v1/shared-voices                # browse the library
+curl -H "Authorization: Bearer <agentphone key>" https://api.agentphone.ai/v1/agents/voices
+curl -X PATCH -H "Authorization: Bearer <agentphone key>" https://api.agentphone.ai/v1/agents/<agentId> -d '{"voice":"<voice_id>"}'
+```
+
+Store the id under `voice.agentphone`. That covers calls.
+
+**For voice notes and audio files**, ElevenLabs through Orthogonal, with the same or the closest voice:
+
+```bash
+orth run elevenlabs /v1/voices
 orth run elevenlabs "/v1/text-to-speech/<voice_id>" --body '{"text":"Hi, this is Ari.","model_id":"eleven_multilingual_v2"}'
 orth run elevenlabs /v1/speech-to-text               # hear voice notes sent to it
 ```
 
-Pick one `voice_id`, store it under `voice.elevenlabs`, and set the same voice on the AgentPhone agent (`PATCH /v1/agents/<agentId>` with `voice`) so the phone and the voice notes match. Direct ElevenLabs, Cartesia, or OpenAI TTS keys work the same way if the human already has one.
+Store under `voice.elevenlabs`. Direct ElevenLabs, Cartesia, or OpenAI TTS keys work the same way if the agent gets one via Layer 6.
 
 ## Layer 9: Eyes on the world
 
@@ -331,19 +365,21 @@ OpenRouter reaches every major model with one key. Direct Anthropic, OpenAI, Gro
 
 ## Layer 13: Keys and 2FA
 
-Every account the agent creates produces a password, and many ask for a second factor. The agent needs a place for both.
-
-**Passwords.** Generate with `openssl rand -base64 24`. Store in the identity file under `accounts.<service>.password`, or in a Bitwarden vault owned by the agent (`bw` CLI, account created via Layer 6) if the human prefers a real vault. Never reuse a password across services.
-
-**TOTP.** When a service offers an authenticator, take the setup secret from the QR page (the `otpauth://` URI or the plain secret) and store it under `accounts.<service>.totp_secret`. Generate codes with:
+Every account the agent creates produces a password, and many ask for a second factor. The Mailgent vault from Layer 1 is the store, and it is also the authenticator. No Bitwarden account, no `oathtool`.
 
 ```bash
-oathtool --totp -b <secret>
+mailgent vault store github --type API_KEY --data '{"token":"ghp_...","password":"...","totp_secret":"JBSWY3DPEHPK3PXP","recovery_codes":["..."]}'
+mailgent vault get github
+mailgent vault totp github                          # a fresh 6-digit code, right now
 ```
 
-That makes the agent its own authenticator app, so 2FA never blocks it.
+**Passwords.** Generate with `openssl rand -base64 24`. One per service, never reused.
 
-**Recovery codes.** Store under `accounts.<service>.recovery_codes`. They are the only way back in if a token is revoked.
+**TOTP.** When a service offers an authenticator, take the setup secret from the QR page (the `otpauth://` URI or the plain secret), store it in the vault, and read codes with `vault totp`. 2FA never blocks the agent again.
+
+**Recovery codes.** In the vault beside the token. They are the only way back in if a token is revoked.
+
+The identity file keeps a pointer (`accounts.<service>.vault = "github"`) rather than the secret itself, so the file can be shared with the human without leaking anything.
 
 ## Layer 14: Social presence
 
@@ -363,9 +399,9 @@ Store handle and token under `social.<network>`. A consistent name, avatar, and 
 
 A human has a calendar others can book into.
 
-- **Own calendar:** create a Google account at `accounts.google.com/signup` through the browser layer with the Layer 2 number for verification, or use a CalDAV calendar on any provider. Store the OAuth refresh token or app password under `calendar`.
-- **Booking page:** Cal.com (`cal.com/signup`, API at `api.cal.com/v2`) gives the agent a public link like `cal.com/ari-vale/15min`. Put the link in email signatures and profiles.
-- **Meetings:** Google Meet or Zoom links come from the calendar. The agent joins by voice (Layer 8) where the host supports it.
+- **Own calendar, already provisioned:** the Mailgent signup in Layer 1 included one. Read and write it through the Mailgent SDK or MCP (`calendar:write` scope). No Google account needed.
+- **Booking page:** Cal.com (`cal.com/signup` with the agent's email, API at `api.cal.com/v2`) gives a public link like `cal.com/ari-vale/15min`. Put it in email signatures and profiles.
+- **Google Calendar**, only if a task needs Google specifically: create the account at `accounts.google.com/signup` through the browser layer with the Layer 2 number for verification.
 
 ## Layer 16: Address and physical mail
 
@@ -425,43 +461,45 @@ For an agent that will sign contracts, hold a bank account, or invoice under a c
 
 ## Human touchpoints
 
-The whole point is that setup runs without the human. These are the only places a person is needed, and each one is reached only when that layer is actually wanted:
+The whole point is that setup runs without the human. Layers 0, 1, 2, 7, 8, 13, and 15 need no key and no person: the agent signs itself up. These are the only places a person is ever needed, and each is reached only when that layer is actually wanted:
 
 | When | What | Why the agent cannot |
 |------|------|----------------------|
-| Before first run | An Orthogonal API key with credit | The marketplace account belongs to a person |
+| Layer 4, wallet | Send USDC to the agent's address once | Money has to come from somewhere |
+| Layer 4, card | One identity check at AgentWallet or AgentCard | Card networks require a verified person behind every card |
 | Layer 4, Stripe live mode | Identity and bank details | Payouts require a legal person or entity |
-| Layer 4, wallet | Fund the address once | Money has to come from somewhere |
+| Layer 9 onward | An Orthogonal API key with credit | The marketplace account belongs to a person; $10 free credit on signup, no card |
 | Layer 16, mailbox | Notarised USPS Form 1583 | Federal requirement, a person must sign |
 | Layer 21 | Sign the formation documents | The entity's owner must be a person |
 | Last step | Rules, if any | Only the human knows what they want |
 
-Everything else, including every verification code, every 2FA setup, every account creation, every token, the agent does itself using its own inbox and number. If a step seems to need the human and is not in this table, look again: the code is in Layer 1 or Layer 2, the payment is Layer 4, and the browser is Layer 5.
+Everything else, including every verification code, every 2FA setup, every account creation, every token, the agent does itself using its own inbox and number. If a step seems to need the human and is not in this table, look again: the code is in Layer 1 or Layer 2, the payment is x402 from Layer 4, and the browser is Layer 5.
 
 ## One-shot bootstrap
 
-Run this top to bottom on a fresh agent. No pauses. Write to the identity file after each line.
+Run this top to bottom on a fresh agent. No pauses, no keys to start. Write to the identity file after each line.
 
-1. Pick a name, check it is free on GitHub and AgentMail, write persona. (Layer 0)
-2. Create the AgentMail inbox. (Layer 1)
-3. AgentPhone sign-up with the inbox address, poll the inbox for the code, verify, store key and number. (Layer 2)
-4. Generate the avatar mark and save it. (Layer 7)
-5. Pick an ElevenLabs voice, set it on the AgentPhone agent. (Layer 8)
-6. Generate an SSH key and a wallet. (Layers 10 and 4)
-7. GitHub: browser sign-up with the inbox, code from the inbox, TOTP secret stored, fine-grained token created and verified, avatar uploaded. (Layers 6, 13, 7)
-8. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
-9. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
-10. Stripe account in test mode. (Layer 4)
-11. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. (Layer 3)
-12. X and Reddit accounts with the avatar and persona. (Layer 14)
-13. Cal.com booking page. (Layer 15)
-14. Ask the human about rules and carry on. (Last step)
+1. `POST https://api.mailgent.dev/v0/agent-signup` with an empty body. Inbox, API key, DID, vault, calendar, USDC wallet, all at once. (Layers 0, 1, 13, 15, 4)
+2. Pick a name, check it is free on AgentMail and GitHub, write the persona. (Layer 0)
+3. AgentMail sign-up with the Mailgent address as `human_email`, read the code from Mailgent, verify. (Layer 1)
+4. AgentPhone sign-up with the AgentMail address, read the code, verify, store key and number. (Layer 2)
+5. Pick an AgentPhone voice and set it on the agent. (Layer 8)
+6. Run `scripts/avatar.py` with the name. (Layer 7)
+7. Generate an SSH key and extra wallets. (Layers 10 and 4)
+8. GitHub: browser sign-up with the AgentMail address, code from the inbox, TOTP secret into the vault, fine-grained token created and verified, avatar uploaded. (Layers 6, 13, 7)
+9. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
+10. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
+11. Stripe account in test mode. (Layer 4)
+12. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. Dial if iMessage or a non-US number is wanted. (Layers 3, 2)
+13. X and Reddit accounts with the avatar and persona. (Layer 14)
+14. Cal.com booking page. (Layer 15)
+15. Ask the human about rules and carry on. (Last step)
 
-Steps 1 through 9 take one session with no input. Everything after is optional and can run when a task first needs it.
+Steps 1 through 10 take one session with no input and no Orthogonal key. Everything after is optional and runs when a task first needs it.
 
 ## Order of operations for a fresh agent
 
-Follow the one-shot bootstrap above. After step 3 the agent can sign up for almost anything on its own. After step 8 it can build and ship software. After step 13 it can do most of what a person with a laptop and a phone can do.
+Follow the one-shot bootstrap above. After step 4 the agent can sign up for almost anything on its own. After step 9 it can build and ship software. After step 14 it can do most of what a person with a laptop and a phone can do.
 
 ## Last step: Ask the human for rules
 
