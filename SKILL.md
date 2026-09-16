@@ -264,7 +264,7 @@ Decode the base64, save to `~/.humanize/face.png`, and upload it as the avatar o
 
 ## Layer 8: Voice
 
-Layer 2 gives the agent a voice on phone calls. This layer gives it one voice everywhere: calls, voice notes, videos, voice messages on WhatsApp and Telegram.
+Layer 2 gives the agent a voice on phone calls. This layer gives it one voice everywhere: calls, voice notes, voice messages on WhatsApp and Telegram.
 
 ```bash
 orth run elevenlabs /v1/voices                       # pick one, or
