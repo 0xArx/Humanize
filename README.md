@@ -1,16 +1,22 @@
 # Humanize
 
-A skill that makes AI-written text sound like a person wrote it.
+A skill that turns an AI agent into a functioning person.
 
-Models have habits. Em dashes, lists of three, "delve", "it's not just X, it's Y", a cheerful opener and a tidy recap at the end. Readers spot these in seconds. This skill lists the habits and tells the model how to write without them.
+Agents hit walls for boring reasons. They cannot receive a verification email. They cannot get an SMS code. They cannot pay for the thing they need. They cannot sign up anywhere that has no API. Humanize provisions each of those, in order, through APIs, and keeps the result in one identity file so the agent knows what it owns.
 
-## What's in here
+## What the agent gets
 
-| File | Purpose |
-|------|---------|
-| `SKILL.md` | The skill itself. Workflow, full list of tells, default voice, examples, checklist. |
-| `AGENTS.md` | How to install it in Claude Code, Cursor, Codex, or any agent, plus rules for editing this repo. |
-| `README.md` | This file. |
+| Layer | What | Provider | Cost |
+|-------|------|----------|------|
+| 0 | Name and persona | you | free |
+| 1 | Email inbox, send and receive | AgentMail via Orthogonal | $2/mo |
+| 2 | Phone number, SMS, voice calls | AgentPhone via Orthogonal | $3/mo per number |
+| 3 | WhatsApp | rides on the phone number | varies |
+| 4 | Payment card | your issuer, slot ready | varies |
+| 5 | A browser it can drive | Notte via Orthogonal | credits |
+| 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol | free |
+
+Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours.
 
 ## Install
 
@@ -20,38 +26,44 @@ Models have habits. Em dashes, lists of three, "delve", "it's not just X, it's Y
 git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
 ```
 
-Then type `/humanize` followed by your text, or just ask Claude to make something sound human. It triggers on its own for emails, posts, and copy.
+You also need the Orthogonal CLI with `ORTHOGONAL_API_KEY` set. Every provider in this skill is reached through it.
 
-**Everything else**
+**Any other agent**
 
-Open `SKILL.md`, copy it, paste it into your system prompt or rules file. It is plain markdown and needs nothing else.
+Copy `SKILL.md` into your system prompt or rules file and give the agent a shell with `orth` on it.
 
-## What it does
+## Use
 
-1. Reads the text and figures out who it is for.
-2. Matches your voice if you give it samples. Falls back to a plain, direct default if you don't.
-3. Removes every AI tell on the list. Not softened, removed.
-4. Fixes the rhythm so sentences don't all sound the same.
-5. Adds one concrete detail or opinion so the writing comes from somewhere.
-6. Returns the text, usually shorter than what went in.
+Tell your agent any of these:
 
-## Example
+- "Humanize yourself."
+- "Get yourself an email and a phone number."
+- "Sign up for GitHub and get a token."
+- "Deploy this to Vercel." (it will provision the account if it has none)
+- "Call the dentist and move my appointment."
 
-Before:
+It reads `~/.humanize/identity.json`, provisions whatever is missing, and gets on with the task.
 
-> In today's fast-paced digital landscape, it's crucial to leverage cutting-edge tools that not only streamline your workflow but also empower your team to unlock their full potential.
+## Guardrails built in
 
-After:
+- One identity per human. No account farming.
+- Says it is an AI when asked.
+- Never spends without a yes from you, even with a key stored.
+- No CAPTCHA bypass. Blocked steps come back to you.
+- Never uses your personal credentials. It has its own.
+- Identity file stays local and is never committed or deployed.
 
-> Most teams waste time on tools that don't fit how they actually work. Here's what has worked for us.
+## Files
 
-## Matching your own voice
+| File | Purpose |
+|------|---------|
+| `SKILL.md` | The skill. Layers 0 to 6, commands, costs, identity file schema, guardrails. |
+| `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
+| `README.md` | This file. |
 
-Give it a few of your real emails or posts. It copies your sentence length, your punctuation, your sign-off, and your quirks. It won't fix your grammar. That's the point.
+## Roadmap
 
-## Contributing
-
-Found a tell that isn't on the list? Add it to the right section in `SKILL.md` and send a pull request. Keep the repo free of the things the skill bans. Read `AGENTS.md` first.
+Card issuer, WhatsApp provider, calendar, and a real mailing address are the next layers. Each one gets added the same way: find it on Orthogonal, run the commands, write the recipe. Pull requests welcome. Read `AGENTS.md` first.
 
 ## License
 
