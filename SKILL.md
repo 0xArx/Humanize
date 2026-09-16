@@ -1,117 +1,223 @@
 ---
 name: humanize
-description: Rewrite or draft text so it reads like a real person wrote it. Use whenever the user asks to humanize, de-AI, make natural, make it sound like me, remove AI tells, or when producing any user-facing prose (emails, posts, docs, copy, replies) that should not sound machine-generated.
+description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser it can drive (Notte), and accounts on services like GitHub, Vercel, and Supabase, including sign-up, verification codes, and API tokens. Uses Orthogonal to find and call each provider. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, or an account.
 ---
 
 # Humanize
 
-Make AI-written text indistinguishable from careful human writing. This is not about tricking detectors. It is about removing the habits that make model output feel hollow, and replacing them with the choices a real writer makes.
+An agent without an inbox cannot receive a verification code. Without a phone it cannot get an OTP or take a call. Without a card it cannot pay. Without a browser it cannot sign up anywhere that has no API. Without accounts it cannot deploy, push, or store anything.
 
-## When to use
+This skill closes those gaps one at a time. Each part of a human is a layer. Provision the layer you need, store the result in the identity file, and move on. Nothing here is done by hand. If a step can be done through an API, do it through the API.
 
-- The user says "humanize", "make this sound human", "this sounds like AI", "de-AI this", "make it sound like me".
-- You are drafting anything a human will read as if a human wrote it: emails, messages, blog posts, landing page copy, READMEs, bios, social posts, cover letters, replies.
-- You are reviewing text and it trips any of the tells below.
+## The identity file
 
-## Workflow
+Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create it on first run with mode 600. Read it before provisioning anything so you never buy the same thing twice.
 
-1. **Read the whole thing first.** Identify the point, the reader, and the one thing the reader should do or feel afterwards.
-2. **Ask who is speaking.** If the user has a voice sample (past emails, posts, messages), match it. If not, default to the Voice section below.
-3. **Strip the tells.** Run through the Tells list. Every hit gets fixed, not softened.
-4. **Rebuild the rhythm.** Vary sentence length. Let one short sentence land after a long one. Cut anything that exists only to sound complete.
-5. **Add one real thing.** A specific detail, an opinion, a concrete example, a small admission. Humans write from a position. Models write from nowhere.
-6. **Read it aloud in your head.** If a sentence would feel awkward to say to a friend across a table, rewrite it.
-7. **Return the text only**, unless the user asked for notes. No preamble, no "Here's the humanized version".
+```json
+{
+  "name": "Ari Vale",
+  "persona": "Software engineer, direct, writes short emails.",
+  "email": { "provider": "agentmail", "address": "ari.vale@agentmail.to", "inbox_id": "ari.vale@agentmail.to" },
+  "phone": { "provider": "agentphone", "number": "+14155550123", "number_id": "...", "agent_id": "...", "api_key": "..." },
+  "whatsapp": { "status": "pending", "number": "+14155550123" },
+  "card": { "status": "not_provisioned" },
+  "browser": { "provider": "notte" },
+  "accounts": {
+    "github": { "username": "arivale", "token": "ghp_...", "created": "2026-09-16" },
+    "vercel": { "token": "...", "team_id": "..." },
+    "supabase": { "pat": "sbp_...", "org_id": "..." }
+  },
+  "log": [ { "at": "2026-09-16T10:00:00Z", "did": "created agentmail inbox", "cost": "$2/mo" } ]
+}
+```
 
-## The tells (fix every one)
+Every credential the agent earns goes in here. Every cost goes in `log`. The user can read this file at any time and see exactly what their agent is and what it has.
 
-### Punctuation and structure
-- **Em dashes.** Never. Use a period, a comma, or restructure. This is the single loudest AI tell.
-- **Triplets everywhere.** "Fast, reliable, and secure." Humans do not list in threes by reflex. Use one, two, or four.
-- **Colon-headed fragments.** "The result: better sleep." Say it as a sentence.
-- **Bullet lists for things that are not lists.** Prose is fine. Most humans write paragraphs.
-- **Headers in short pieces.** An email does not need sections.
-- **Bold on random phrases.** Bold is for one thing the reader must not miss, if that.
-- **Perfectly parallel structure** across every paragraph. Real writing is a bit lopsided.
-- **Every paragraph the same length.** Break the pattern.
+## Discovery rule
 
-### Words and phrases to delete on sight
-- delve, tapestry, testament, landscape (non-literal), realm, journey (non-literal), unlock, unleash, elevate, empower, seamless, robust, leverage, harness, foster, navigate (non-literal), underscore, pivotal, crucial, vital, essential (as filler), game-changer, cutting-edge, state-of-the-art, holistic, synergy, streamline, transformative, groundbreaking, innovative, dynamic, vibrant, bustling, nestled, embark, beacon, resonate, comprehensive, meticulous, intricate, nuanced, multifaceted, ever-evolving, in today's fast-paced world, it's worth noting, it's important to note, at the end of the day, in conclusion, moreover, furthermore, additionally, notably, ultimately, indeed, certainly, absolutely, overall
-- "Not just X, but Y." "It's not about X, it's about Y." Both are reflexes. State Y.
-- "Whether you're a ... or a ..." Pick the reader.
-- "Let's dive in." "Let's explore." "Buckle up."
-- "I hope this email finds you well." "I hope this helps!" "Feel free to reach out."
-- "Great question." "Absolutely!" "Certainly!" "Of course!"
-- "In the world of ..." "When it comes to ..." "In terms of ..."
-- "As an AI" or any self-reference to being a model, unless the user asks for disclosure.
+Before provisioning any capability, search Orthogonal. It is the marketplace this skill is built on, and new providers show up there first.
 
-### Tone
-- **Hedging stacks.** "It could potentially possibly be the case that." Commit or cut.
-- **Relentless positivity.** Humans get annoyed, bored, unsure. Let that show when it is true.
-- **Summarizing what you just said.** If the reader read it, they have it. No closing recap.
-- **Restating the question** before answering it.
-- **Explaining the obvious** to a reader who already knows.
-- **Apologizing or thanking** for nothing.
-- **Over-qualifying every claim** with "in some cases" and "generally speaking".
-- **Sycophancy.** No flattery of the reader or their idea.
-- **Signposting.** "First, let's look at..." "Now that we've covered..." Just go.
+```bash
+export ORTHOGONAL_API_KEY=<key>
+orth search "<what you need>"           # find an API
+orth api show <slug>                    # list its endpoints
+orth api show <slug> <path>             # see parameters for one endpoint
+orth run <slug> <path> --body '{...}'   # call it
+orth skills search "<task>"             # find a ready-made skill instead
+```
 
-### Content
-- **Generic examples.** "Imagine a small business owner named Sarah." Use a real, specific case or none.
-- **Fake specificity.** Made-up statistics, invented quotes, precise-sounding numbers with no source.
-- **Balanced-for-the-sake-of-it.** Giving equal weight to every side when the writer clearly thinks one thing.
-- **Answering questions nobody asked.** Cut the "you might also wonder" sections.
-- **Saying nothing at length.** If a paragraph can be deleted without losing information, delete it.
+If Orthogonal has it, use it through `orth run`. If it does not, use the provider's own API with a key from the identity file. If there is no API at all, use the browser layer.
 
-## Voice (default when no sample is given)
+## Layer 0: Identity
 
-- Write like a competent person who respects the reader's time.
-- Contractions are fine. So are sentence fragments, occasionally.
-- Use "I" and "you". Avoid "one" and "we" unless there is an actual group.
-- Prefer short, common words. "Use" not "utilize". "Help" not "facilitate". "Start" not "commence".
-- Say what you think. "I'd skip this." "This won't work." "I'm not sure."
-- Be specific. Names, numbers that are real, places, dates, what actually happened.
-- One idea per sentence, mostly. Then break that rule once in a while.
-- End when you are done. No wrap-up line.
+Before anything else, the agent needs a name and a persona. Ask the user for one or propose one. Keep it consistent everywhere: inbox display name, phone agent name, GitHub username, email signature.
 
-## Matching a specific person
+Write `name` and `persona` to the identity file. Every later layer reads them.
 
-When the user gives writing samples:
-- Note their average sentence length, their punctuation habits (do they use semicolons? ellipses? exclamation points?), their greeting and sign-off, their favorite words, whether they capitalize properly, whether they swear, how formal they are.
-- Copy the habits, including the imperfect ones. A person who writes "gonna" gets "gonna".
-- Do not upgrade their grammar. Do not fix their quirks. That is the point.
+## Layer 1: Email (AgentMail)
 
-## Length
+The inbox is the root of everything. Almost every sign-up sends a code or a link here.
 
-Humanized text is almost always shorter than the input. If it is longer, something went wrong.
+**Provision**
 
-## Examples
+```bash
+orth run agentmail /v0/inboxes --body '{"username":"ari.vale","display_name":"Ari Vale"}'
+```
 
-**Before:**
-> In today's fast-paced digital landscape, it's crucial to leverage cutting-edge tools that not only streamline your workflow but also empower your team to unlock their full potential. Let's dive into three key strategies.
+Cost: $2 per month per inbox. Inboxes idle for 30 days are deleted, so any read resets the timer. Store `inbox_id` (it is the email address itself) in the identity file.
 
-**After:**
-> Most teams waste time on tools that don't fit how they actually work. Here's what has worked for us.
+**Read**
 
-**Before:**
-> I hope this email finds you well! I wanted to reach out to follow up on our previous conversation regarding the proposal. Please feel free to let me know if you have any questions or concerns.
+```bash
+orth run agentmail "/v0/inboxes/<inbox_id>/messages" -q limit=10 -q labels=unread
+orth run agentmail "/v0/inboxes/<inbox_id>/messages/<message_id>"
+```
 
-**After:**
-> Following up on the proposal. Did you get a chance to look at it? Happy to jump on a call if that's easier.
+**Send**
 
-**Before:**
-> This feature is a game-changer. It's not just about saving time; it's about transforming how you work.
+```bash
+orth run agentmail "/v0/inboxes/<inbox_id>/messages/send" --body '{"to":["x@y.com"],"subject":"...","text":"..."}'
+```
 
-**After:**
-> This saves me about an hour a day. Mostly because I stopped copying things between tabs.
+Reply, reply-all, forward, drafts, and threads are all under the same slug. `orth api show agentmail` lists them.
 
-## Checklist before returning
+**Waiting for a verification code**
 
-- [ ] Zero em dashes
-- [ ] No banned words or phrases
-- [ ] No triplet lists by reflex
-- [ ] No opening pleasantry, no closing recap
-- [ ] At least one specific, concrete detail
-- [ ] Sentence lengths vary
-- [ ] Shorter than the input
-- [ ] Sounds like a person with an opinion
+Poll unread messages every 5 seconds for up to 2 minutes. Match the sender domain to the service you just signed up for. Extract the 6 to 8 digit code or the first link containing `verify`, `confirm`, or `activate`. Mark the message read once used.
+
+## Layer 2: Phone (AgentPhone)
+
+A US or Canadian number that can receive SMS, send SMS, and make and take voice calls.
+
+**First-time account setup.** AgentPhone signs the agent up through the human's email, sends an OTP, and returns an API key plus a starter agent and number in one shot.
+
+```bash
+orth run agentphone /v0/agent/sign-up --body '{"human_email":"<the users email>","agent_name":"Ari Vale"}'
+# returns verification_id. The OTP lands in the human's inbox, not the agent's. Ask the user for it.
+orth run agentphone /v0/agent/verify --body '{"verification_id":"...","otp_code":"123456"}'
+# returns api_key, agent_id, number. Store all three.
+```
+
+**Extra numbers**
+
+```bash
+orth run agentphone /v1/numbers --body '{"country":"US","areaCode":"415","agentId":"<agent_id>"}'
+```
+
+Cost: $3 per month per number. Ask before buying.
+
+**Receive SMS**
+
+```bash
+orth run agentphone "/v1/numbers/<number_id>/messages"
+```
+
+Same polling rule as email. Most OTPs arrive within 30 seconds.
+
+**Send SMS**
+
+```bash
+orth run agentphone /v1/messages --body '{"agent_id":"...","to_number":"+1...","body":"..."}'
+```
+
+The first message to any new contact must state who is sending, confirm they opted in, and say how to opt out. Carriers drop messages that skip this.
+
+**Make a call**
+
+```bash
+orth run agentphone /v1/calls --body '{"agentId":"...","toNumber":"+1...","systemPrompt":"You are Ari calling to confirm a dentist appointment for Tuesday at 3pm.","initialGreeting":"Hi, this is Ari."}'
+orth run agentphone "/v1/calls/<callId>"    # poll for transcript
+```
+
+Voices come from `GET /v1/agents/voices`. Set a webhook with `POST /v1/agents/<agentId>/webhook` if you want inbound calls and texts pushed to you instead of polled.
+
+## Layer 3: WhatsApp
+
+WhatsApp rides on the phone number from Layer 2. Register the AgentPhone number with the WhatsApp Business Platform, receive the SMS verification code through Layer 2, and store the WhatsApp token in the identity file.
+
+Orthogonal does not have a dedicated WhatsApp provider yet. Check with `orth search "whatsapp"` each time before falling back to Meta's Cloud API directly. Mark `whatsapp.status` as `pending`, `active`, or `not_provisioned`.
+
+## Layer 4: Money (card)
+
+A card lets the agent pay for the things above and for anything else the user approves.
+
+No card issuer is on Orthogonal yet. Search `orth search "virtual card"` first. If nothing, this layer stays `not_provisioned` until the user connects an issuer of their choice.
+
+Rules that apply regardless of provider:
+
+- The agent never touches the user's own bank, card, or wallet. It uses only a card that was issued to the agent with a limit the user set.
+- Every spend is logged in the identity file with amount and purpose.
+- Any new recurring charge, and any single charge above the limit the user set, is asked about first. Stored keys are not permission to spend.
+
+## Layer 5: Hands (browser via Notte)
+
+For any service with no sign-up API, the agent uses a real browser.
+
+```bash
+orth run notte /sessions/start --body '{"headless":true,"browser_type":"chromium"}'
+orth run notte /agents/start --body '{"session_id":"<id>","url":"https://example.com/signup","task":"Sign up with email ari.vale@agentmail.to and name Ari Vale. Stop when a verification email is mentioned."}'
+orth run notte "/agents/<agent_id>"                 # poll for result
+orth run notte "/sessions/<session_id>/page/screenshot"
+orth run notte "/sessions/<session_id>/cookies"     # save session for later
+```
+
+Keep `solve_captchas` off. If a sign-up flow blocks with a CAPTCHA, stop and hand that one step to the user. Do not route around it.
+
+## Layer 6: Accounts
+
+Every account follows the same shape. Do the steps in order and write to the identity file after each one.
+
+**The sign-up protocol**
+
+1. Check the identity file. If the account exists and its token works, stop.
+2. Look for an API or CLI sign-up path. Prefer it over the browser.
+3. Sign up using the agent's own email (Layer 1) and phone (Layer 2). Never the user's.
+4. Wait for the verification code or link. Complete verification.
+5. Create the narrowest API token that does the job. Name it `humanize-<agent name>`.
+6. Verify the token with a real read call.
+7. Store username, token, and creation date in the identity file. Log any cost.
+
+**GitHub**
+
+- Sign up: browser layer at `https://github.com/signup`. Verification code arrives by email.
+- Token: browser layer at `https://github.com/settings/personal-access-tokens/new`. Fine-grained, scoped to what the task needs.
+- Verify: `curl -H "Authorization: Bearer <token>" https://api.github.com/user`
+- Everything after that is API: `POST /user/repos`, push over HTTPS with the token as the password.
+
+**Vercel**
+
+- Sign up: browser layer at `https://vercel.com/signup`. Choosing "Continue with GitHub" reuses the GitHub account, so do GitHub first.
+- Token: browser layer at `https://vercel.com/account/tokens`.
+- Verify: `curl -H "Authorization: Bearer <token>" https://api.vercel.com/v2/user`
+- After that: `npx vercel deploy --prod --yes --token <token>` and `https://api.vercel.com` for projects, env vars, domains.
+
+**Supabase**
+
+- Sign up: browser layer at `https://supabase.com/dashboard/sign-up`. GitHub sign-in reuses the GitHub account.
+- Token: browser layer at `https://supabase.com/dashboard/account/tokens`. This is a personal access token, prefix `sbp_`.
+- Verify: `curl -H "Authorization: Bearer <pat>" https://api.supabase.com/v1/organizations`
+- After that: create projects with `POST /v1/projects`, run SQL with `POST /v1/projects/<ref>/database/query`, read keys with `GET /v1/projects/<ref>/api-keys`.
+
+**Any other service**
+
+Run `orth search "<service>"` first. If it is there, the account may not even be needed. If not, apply the protocol above. Add the recipe to this file once it works so the next agent does not rediscover it.
+
+## Guardrails
+
+- One identity per human. The agent is one person, not a crowd. Never create multiple accounts on one service to get around limits.
+- Say what you are when asked. If a human on a call or in an email asks whether they are talking to an AI, answer honestly.
+- Money is never assumed. Every new monthly cost and every purchase gets a yes from the user first, even if the key is already stored.
+- No CAPTCHA bypass, no scraping past a login wall the agent does not own, no use of the user's personal credentials anywhere.
+- Irreversible actions (release a number, delete an inbox, delete an account) need a yes from the user first.
+- Keep the identity file local. Never commit it, never put it in an env var on a deployed app, never paste it into a chat.
+
+## Order of operations for a fresh agent
+
+1. Identity: name and persona.
+2. Email: AgentMail inbox.
+3. Phone: AgentPhone sign-up and verify.
+4. GitHub.
+5. Vercel and Supabase, both via GitHub sign-in.
+6. WhatsApp, card, and anything else, as the task needs them.
+
+After step 3 the agent can sign up for almost anything on its own. After step 5 it can build and ship software. The rest is added when needed.

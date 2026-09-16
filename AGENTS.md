@@ -1,38 +1,55 @@
 # AGENTS.md
 
-Instructions for AI coding agents and assistants working in or with this repository.
+Instructions for AI agents working in or with this repository.
 
 ## What this repo is
 
-A single skill, `humanize`, defined in `SKILL.md`. It teaches an AI model to write text that reads as human. There is no build step, no code, no tests. The deliverable is the markdown.
+One skill, `humanize`, defined in `SKILL.md`. It gives an agent everything a person has: an email, a phone, WhatsApp, a card, a browser, and accounts on services, each provisioned through APIs with Orthogonal as the marketplace. No code, no build, no tests. The markdown is the product.
 
-## How to use the skill
+## Install
 
-**Claude Code / Claude Agent SDK**
-Copy or symlink this folder into your skills directory:
+**Claude Code**
 
 ```bash
-cp -r Humanize ~/.claude/skills/humanize
+git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
 ```
 
-Then invoke with `/humanize` or just ask to humanize something. The `description` in the SKILL.md frontmatter handles automatic triggering.
+Then `/humanize` or ask for anything the skill description covers. Requires the `orth` CLI and `ORTHOGONAL_API_KEY` set.
 
-**Cursor, Windsurf, Codex, Copilot, or any agent that reads AGENTS.md or rules files**
-Paste the contents of `SKILL.md` into your rules file, system prompt, or `.cursorrules`. The skill is plain markdown and works as a system instruction on its own.
+**Other agents (Cursor, Codex, OpenClaw, custom)**
 
-**Any chat model**
-Paste `SKILL.md` at the top of the conversation, then paste the text you want humanized.
+Paste `SKILL.md` into the system prompt or rules file. Give the agent shell access and the `orth` CLI. That is all it needs.
 
-## Rules for agents editing this repo
+## Prerequisites the agent needs at runtime
 
-- `SKILL.md` is the source of truth. Every other file describes or points to it.
-- Keep the skill in one file. Do not split it into references unless it exceeds what a model can hold comfortably in context.
-- The skill must follow its own rules. No em dashes anywhere in this repo. No banned words in the docs. If you add an example, the "after" version must pass the checklist at the bottom of `SKILL.md`.
-- Do not add tooling, dependencies, package.json, or scripts. If you feel the need to, open an issue instead.
-- Frontmatter `name` stays `humanize`. The `description` must remain a triggering description (what the skill does and when to use it), not marketing copy.
-- When adding a tell, put it in the right category. Words go in the word list, patterns go under Tone or Content.
-- Test changes by running the skill on the three examples in `SKILL.md` and on one new piece of text. If the output still sounds like a model, the change is not done.
+- `orth` CLI on PATH with `ORTHOGONAL_API_KEY` exported. Install: see orthogonal.sh.
+- Orthogonal credit balance above zero. Check with `orth balance`.
+- Shell access to create `~/.humanize/identity.json`.
+- A human reachable for the one-time AgentPhone OTP and for any spend approval.
+
+## How the skill is organised
+
+Layers, numbered 0 to 6. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
+
+Layer 6 (accounts) holds one recipe per service. Every recipe has the same four lines: sign up, token, verify, then what to do after.
+
+## Adding a new layer or recipe
+
+1. Search Orthogonal first: `orth search "<capability>"`. If a provider exists, the recipe uses `orth run`, not raw curl.
+2. Run every command you write down. Paste real parameter names from `orth api show <slug> <path>`. Do not guess.
+3. State the cost. If it is not free, say the number and say "ask before buying".
+4. Say what goes into the identity file and under which key.
+5. Keep the section shape identical to the existing ones. An agent reading layer 7 should already know the layout from layer 1.
+6. If the provider has no API and needs the browser layer, say which URL and what the agent should stop at.
+
+## Rules
+
+- `SKILL.md` is the source of truth. README and this file describe it, never extend it.
+- No secrets in the repo. The identity file lives at `~/.humanize/`, never here. Example values in docs are placeholders.
+- No em dashes anywhere in the repo.
+- Do not remove a guardrail without an issue explaining why.
+- Do not add a dependency, script, or package manifest. If the skill needs a helper, it goes in `scripts/` as a plain shell file and gets referenced from `SKILL.md`.
 
 ## Commit style
 
-Short, plain, imperative. "Add hedging tells." "Fix example two." No emoji, no conventional-commit prefixes required.
+Short, plain, imperative. "Add WhatsApp recipe." "Fix AgentPhone verify example."
