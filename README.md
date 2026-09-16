@@ -13,7 +13,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 2 | Phone number, SMS, voice calls | AgentPhone via Orthogonal | $3/mo per number |
 | 3 | WhatsApp | rides on the phone number | varies |
 | 4 | Payment card | your issuer, slot ready | varies |
-| 5 | A browser it can drive | Notte via Orthogonal | credits |
+| 5 | A browser it can drive | your host's own browser tools, Notte via Orthogonal as fallback | free or credits |
 | 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol | free |
 | 7 | Rules, only if you want them | you | free |
 

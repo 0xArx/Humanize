@@ -4,7 +4,7 @@ Instructions for AI agents working in or with this repository.
 
 ## What this repo is
 
-One skill, `humanize`, defined in `SKILL.md`. It gives an agent everything a person has: an email, a phone, WhatsApp, a card, a browser, and accounts on services, each provisioned through APIs with Orthogonal as the marketplace. No code, no build, no tests. The markdown is the product.
+One skill, `humanize`, defined in `SKILL.md`. It gives an agent everything a person has: an email, a phone, WhatsApp, a card, a browser, and accounts on services, each provisioned through APIs with Orthogonal as the marketplace. The browser layer uses whatever the host agent already has (Claude Code, Codex, a Playwright MCP) and rents Notte only as a fallback. No code, no build, no tests. The markdown is the product.
 
 ## Install
 
@@ -40,7 +40,7 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 3. State the cost. If it is not free, say the number.
 4. Say what goes into the identity file and under which key.
 5. Keep the section shape identical to the existing ones. An agent reading layer 7 should already know the layout from layer 1.
-6. If the provider has no API and needs the browser layer, say which URL and what the agent should stop at.
+6. If the provider has no API and needs the browser layer, say which URL and what the agent should stop at. Do not tie a recipe to Notte or any one browser; it must work with whichever browser Layer 5 picked.
 
 ## Rules
 

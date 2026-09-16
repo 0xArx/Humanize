@@ -21,7 +21,7 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "phone": { "provider": "agentphone", "number": "+14155550123", "number_id": "...", "agent_id": "...", "api_key": "..." },
   "whatsapp": { "status": "pending", "number": "+14155550123" },
   "card": { "status": "not_provisioned" },
-  "browser": { "provider": "notte" },
+  "browser": { "provider": "claude-browser" },
   "rules": [],
   "accounts": {
     "github": { "username": "arivale", "token": "ghp_...", "created": "2026-09-16" },
@@ -146,9 +146,29 @@ No card issuer is on Orthogonal yet. Search `orth search "virtual card"` first. 
 
 Once an issuer is connected, store the card token under `card` and log each spend in `log` with amount and purpose.
 
-## Layer 5: Hands (browser via Notte)
+## Layer 5: Hands (browser)
 
-For any service with no sign-up API, the agent uses a real browser.
+For any service with no sign-up API, the agent uses a browser. Use the one your host already gives you. Only rent one if you have none.
+
+**Pick in this order**
+
+1. **Claude Code.** Use the built-in Browser pane (`preview_start` with a `url`, then `read_page`, `find`, `computer`, `form_input`). If the task needs an already-logged-in session, use Claude in Chrome (`mcp__claude-in-chrome__*`). For native apps, computer use.
+2. **Codex.** Use its browser tool or the `computer` tool it exposes.
+3. **Cursor, Windsurf, Cline, OpenClaw, or any agent with a browser MCP** (Playwright MCP, Browserbase MCP, Chrome DevTools MCP). Use that.
+4. **Nothing above available.** Rent a hosted browser from Notte through Orthogonal.
+
+Whichever you pick, write it to `browser.provider` in the identity file (`claude-browser`, `claude-chrome`, `codex`, `playwright-mcp`, `notte`, and so on) so the next run does not re-decide.
+
+**Doing a sign-up with any browser**
+
+1. Open the sign-up URL.
+2. Fill the form with the agent's name (Layer 0) and email (Layer 1). Use the agent's phone (Layer 2) if a number is asked for.
+3. Submit, then switch to Layer 1 or 2 to fetch the code or link.
+4. Return to the browser, finish verification, and go straight to the token page for that service.
+5. Copy the token out of the page and into the identity file. Do not leave it only in the browser.
+6. Save cookies or session state if the host supports it, so later visits skip login.
+
+**Fallback: Notte via Orthogonal**
 
 ```bash
 orth run notte /sessions/start --body '{"headless":true,"browser_type":"chromium"}'
@@ -158,7 +178,7 @@ orth run notte "/sessions/<session_id>/page/screenshot"
 orth run notte "/sessions/<session_id>/cookies"     # save session for later
 ```
 
-`solve_captchas` and `proxies` are available on session start if a flow needs them.
+`solve_captchas` and `proxies` are available on session start if a flow needs them. Notte bills Orthogonal credits per call.
 
 ## Layer 6: Accounts
 
