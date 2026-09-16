@@ -1,6 +1,6 @@
 ---
 name: humanize
-description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, a legal entity, and a local dashboard to see and steer all of it. Agent-native providers (Mailgent, AgentMail, AgentPhone, Dial) let the agent sign itself up with no human and no key; Orthogonal covers the world-facing layers. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
+description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, a legal entity, a local dashboard to see and steer all of it, and a private encrypted repo so the agent can be loaded on any machine. Agent-native providers (Mailgent, AgentMail, AgentPhone, Dial) let the agent sign itself up with no human and no key; Orthogonal covers the world-facing layers. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
 ---
 
 # Humanize
@@ -29,7 +29,8 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "whatsapp": { "status": "pending", "number": "+14155550123" },
   "card": { "status": "not_provisioned" },
   "browser": { "provider": "claude-browser" },
-  "face": { "photo": "~/.humanize/face.png" },
+  "face": { "photo": "~/.humanize/face.png", "seed": "Ari Vale" },
+  "self_repo": { "url": "https://github.com/arivale/self.git", "last_push": "2026-09-16T10:30:00Z" },
   "voice": { "agentphone": "voice_id", "elevenlabs": "voice_id" },
   "messaging": { "telegram": { "token": "..." }, "discord": { "token": "..." } },
   "wallet": { "mailgent_base_usdc": "0x...", "evm": { "address": "0x..." }, "solana": { "address": "..." } },
@@ -40,7 +41,7 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "address": { "line1": "...", "city": "...", "provider": "stable" },
   "domain": { "name": "arivale.com", "registrar": "vercel" },
   "layers": { "14": { "enabled": false } },
-  "host": { "app": "claude-code", "open_command": "open -a \"Claude\"", "session_id": "..." },
+  "host": { "app": "claude-code-desktop", "open_command": "open -a \"Claude\"", "chat_url": "", "session_id": "..." },
   "dashboard_requests": [ { "at": "2026-09-16T10:00:00Z", "text": "Get a UK number.", "done": false } ],
   "rules": [],
   "accounts": {
@@ -274,22 +275,16 @@ Run `orth search "<service>"` first. If it is there, the account may not even be
 
 ## Layer 7: Face (avatar)
 
-The agent needs a profile picture for every account and anywhere an avatar is asked for. It is not a human face. It is an abstract mark: a dense arrangement of squiggles, lines, loops, and curves, unique to this agent, used the same way a person uses one photo everywhere.
+The agent needs a profile picture for every account and anywhere an avatar is asked for. It is not a human face and not a glass ball. It is a mark of flowing luminous ribbons on a dark disc, the way Siri's energy looks, with colours and curves that belong to this agent alone. The dashboard animates the same mark live.
 
-**Generate locally, no service needed.** `scripts/avatar.py` in this repo draws the mark from the agent's name as a seed, so the same name always produces the same mark.
+**Generate locally, no service needed.** `scripts/avatar.py` derives four colours and the ribbon shapes from a hash of the seed, so the same seed always gives the same mark.
 
 ```bash
 pip install pillow
 python3 scripts/avatar.py "Ari Vale" ~/.humanize/face.png 1024
 ```
 
-**Or with an image model** if the human wants a richer look (needs an Orthogonal key):
-
-```bash
-orth run nano-banana "/v1beta/models/gemini-2.5-flash-image:generateContent" --body '{"contents":[{"parts":[{"text":"Abstract avatar. A complex arrangement of hand-drawn squiggles, tangled lines, loops, arcs and scribbles, layered and overlapping, filling the frame. Two or three colours on a plain flat background. No face, no figure, no letters, no text, no objects. Flat vector style, clean edges, works at 64px."}]}],"generationConfig":{"responseModalities":["IMAGE"],"imageConfig":{"aspectRatio":"1:1"}}}'
-```
-
-Upload it as the avatar on every account in Layer 6 and Layer 14. Store the path under `face.photo`. Never regenerate it once accounts carry it; the mark is how people recognise the agent across services.
+Store the path under `face.photo` and the seed under `face.seed` (the name at the time of generation). Upload it as the avatar on every account in Layer 6 and Layer 14. Never regenerate it once accounts carry it; if the human renames the agent, the mark stays, because `face.seed` does not change.
 
 ## Layer 8: Voice
 
@@ -464,7 +459,7 @@ For an agent that will sign contracts, hold a bank account, or invoice under a c
 
 ## Layer 22: Dashboard
 
-A person can look in a mirror. The agent gets one: a local web page that shows everything it is and has, lets the human switch layers on and off, edit the name, persona and rules, ask for changes, and jump back into the chat. Nothing leaves the machine.
+A person can look in a mirror. The agent gets one: a local web page that shows everything it is and has, lets the human switch layers on and off, edit the name, persona and rules, ask for changes, push the self to its repo, and jump back into the chat. Nothing leaves the machine.
 
 **Start it** as soon as the identity file exists, so the human can watch layers light up during the bootstrap:
 
@@ -473,23 +468,23 @@ python3 scripts/dashboard.py            # serves http://127.0.0.1:4242 and opens
 python3 scripts/dashboard.py --identity ~/.humanize/identity.json --port 4242 --no-open
 ```
 
-Run it in the background (the host's background-command facility, or `nohup ... &`) and keep it running across sessions. It is stdlib Python, no install.
+Run it in the background (the host's background-command facility, or `nohup ... &`) and keep it running across sessions. It is stdlib Python, no install. The page must be served by it; opened as a file it shows a notice and nothing works.
 
-**What it shows.** Avatar, name, persona, DID. Copy pills for the email, phone number, USDC address, GitHub handle, booking link. One card per layer 0 to 21 with a status dot (green provisioned, amber partial, grey empty), the layer's facts (addresses, handles, ids), an on/off switch, and a Provision or Modify button. Below: a box to send the agent a request, the rules editor, the log. Secrets are masked before they reach the browser and are never editable there.
+**What it shows.** The live avatar, name and persona (editable in place), DID. Copy rows for email, phone, USDC address, GitHub handle, booking link, domain. Layers grouped as Self, Reach, Money, World, each row with a status pip, its facts, an on/off switch, and a Provision or Modify button; click a row for the full detail. A composer to send the agent a request (Cmd+Enter sends). Rules, requests, activity. A "Self, stored" panel with the repo status and a Push button (Layer 23). Secrets are masked before they reach the browser and are never editable there.
 
-**Wire the Chat button.** The dashboard runs `host.open_command` from the identity file. Set it during setup for whatever host is running the agent, then test it once:
+**Wire the chat button.** The Open chat button runs `host.open_command` on the machine; if that fails or is empty it opens `host.chat_url` in the browser. The Host button on the page lets the human pick a host and test the command. The agent sets these during setup so the human never has to:
 
-| Host | `host.app` | `host.open_command` |
-|------|------------|---------------------|
-| Claude Code, desktop app | `claude-code` | `open -a "Claude"` (macOS) |
-| Claude Code, terminal | `claude-code` | `osascript -e 'tell app "Terminal" to do script "cd <project> && claude --resume <session_id>"'` on macOS; `x-terminal-emulator -e claude --resume <session_id>` on Linux |
-| Claude Code, web | `claude-code-web` | `open "<session URL>"` |
-| Codex CLI | `codex` | `osascript -e 'tell app "Terminal" to do script "cd <project> && codex resume <session_id>"'` |
-| Cursor | `cursor` | `cursor <project>` |
-| VS Code | `vscode` | `code <project>` |
-| Anything else | its name | whatever command brings the chat back to the front |
+| Host | `host.app` | `host.open_command` | `host.chat_url` |
+|------|------------|---------------------|-----------------|
+| Claude Code, desktop app | `claude-code-desktop` | `open -a "Claude"` (macOS) | |
+| Claude Code, terminal | `claude-code-terminal` | `osascript -e 'tell app "Terminal" to do script "cd <project> && claude --resume <session_id>"'` on macOS; `x-terminal-emulator -e claude --resume <session_id>` on Linux | |
+| Claude Code, web | `claude-code-web` | | the session URL |
+| Codex CLI | `codex` | `osascript -e 'tell app "Terminal" to do script "cd <project> && codex resume <session_id>"'` | |
+| Cursor | `cursor` | `open -a Cursor` | `cursor://` |
+| VS Code | `vscode` | `open -a "Visual Studio Code"` | `vscode://` |
+| Anything else | its name | whatever brings the chat to the front | a URL if there is one |
 
-Write `host.app`, `host.open_command`, and `host.session_id` to the identity file. If the host has no way to be reopened by command, leave `open_command` empty; the dashboard will say so and the request box still works.
+Write `host.app`, `host.open_command`, `host.chat_url`, and `host.session_id` to the identity file, then test with one POST to `/api/chat`.
 
 **How the agent uses it.** At the start of every turn, and after every provisioning step:
 
@@ -499,6 +494,42 @@ Write `host.app`, `host.open_command`, and `host.session_id` to the identity fil
 4. Append to `log` whenever something changes, with `at` and `did`, so the page tells the truth.
 
 The page polls the identity file every 3 seconds. Whatever the agent writes appears without a reload.
+
+## Layer 23: Self, stored
+
+A person does not evaporate when the laptop dies. The agent keeps its whole self in a private git repo so it can be loaded on any machine: identity file (encrypted), avatar, rules, and the dashboard scripts.
+
+**How it is protected.** `identity.json` is encrypted with AES-256 and a passphrase called the self key before it is committed. The repo is private on top of that. The self key is the one thing the human keeps; `self.py` generates it on first use, prints it once, and stores it at `~/.humanize/self.key` (mode 600). Without the key the repo is just a blob.
+
+**Set it up** right after GitHub exists (Layer 6):
+
+```bash
+# create a private repo on the agent's own GitHub, named self
+curl -s -X POST https://api.github.com/user/repos -H "Authorization: Bearer <github token>" -d '{"name":"self","private":true}'
+python3 scripts/self.py init https://github.com/<agent username>/self.git   # prints the self key once, encrypts, pushes
+python3 scripts/self.py status
+```
+
+`self.py` reads the GitHub token from `GITHUB_TOKEN` or from `accounts.github.token` in the identity file. Store the repo URL under `self_repo.url`; `self.py` writes `self_repo.last_push` on every push. Hand the self key to the human once, in the chat, and never write it into the identity file.
+
+**Keep it current.** Push after every provisioning step and at the end of every session:
+
+```bash
+python3 scripts/self.py push
+```
+
+The dashboard's Push button does the same, and its Self panel shows whether local changes are unpushed.
+
+**Load on a new machine.** Any host, any OS:
+
+```bash
+export HUMANIZE_SELF_KEY=<self key>
+curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/scripts/self.py -o self.py
+python3 self.py load https://github.com/<agent username>/self.git
+python3 ~/.humanize/self/scripts/dashboard.py
+```
+
+The agent is back: same name, same inbox, same number, same accounts, same avatar, same rules. Run `python3 self.py pull` on an existing machine to catch up with pushes made elsewhere.
 
 ## Human touchpoints
 
@@ -529,19 +560,20 @@ Run this top to bottom on a fresh agent. No pauses, no keys to start. Write to t
 7. Run `scripts/avatar.py` with the name. (Layer 7)
 8. Generate an SSH key and extra wallets. (Layers 10 and 4)
 9. GitHub: browser sign-up with the AgentMail address, code from the inbox, TOTP secret into the vault, fine-grained token created and verified, avatar uploaded. (Layers 6, 13, 7)
-10. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
-11. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
-12. Stripe account in test mode. (Layer 4)
-13. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. Dial if iMessage or a non-US number is wanted. (Layers 3, 2)
-14. X and Reddit accounts with the avatar and persona. (Layer 14)
-15. Cal.com booking page. (Layer 15)
-16. Ask the human about rules and carry on. (Last step)
+10. Private `self` repo on that GitHub, `self.py init`, hand the self key to the human in the chat. (Layer 23)
+11. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
+12. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
+13. Stripe account in test mode. (Layer 4)
+14. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. Dial if iMessage or a non-US number is wanted. (Layers 3, 2)
+15. X and Reddit accounts with the avatar and persona. (Layer 14)
+16. Cal.com booking page. (Layer 15)
+17. Ask the human about rules and carry on. (Last step)
 
-Steps 1 through 11 take one session with no input and no Orthogonal key. Everything after is optional and runs when a task first needs it.
+Steps 1 through 12 take one session with no input and no Orthogonal key. Everything after is optional and runs when a task first needs it.
 
 ## Order of operations for a fresh agent
 
-Follow the one-shot bootstrap above. After step 5 the agent can sign up for almost anything on its own. After step 10 it can build and ship software. After step 15 it can do most of what a person with a laptop and a phone can do.
+Follow the one-shot bootstrap above. After step 5 the agent can sign up for almost anything on its own. After step 11 it can build and ship software and survives the loss of this machine. After step 16 it can do most of what a person with a laptop and a phone can do.
 
 ## Last step: Ask the human for rules
 

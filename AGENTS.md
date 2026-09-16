@@ -28,7 +28,7 @@ Paste `SKILL.md` into the system prompt or rules file and give the agent shell a
 
 ## How the skill is organised
 
-Layers, numbered 0 to 22, then a final rules step. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
+Layers, numbered 0 to 23, then a final rules step. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
 
 Layer 6 (accounts) holds one recipe per service. Every recipe has the same four lines: sign up, token, verify, then what to do after.
 
@@ -57,6 +57,8 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 - Secrets never reach the browser. Anything matching the `SECRET_KEYS` pattern is masked server-side; extend the pattern when you add a new secret field name to the identity schema.
 - Only fields matched by `ALLOWED` are writable from the page. Add a layer to `LAYERS` in the HTML when you add one to `SKILL.md`, with a `get` that reads the identity file paths that layer stores.
 - Test with a sample identity file, not the real one: `python3 scripts/dashboard.py --identity /tmp/sample.json --no-open`.
+- The avatar maths in `scripts/avatar.py` (palette from sha256, mulberry32 RNG, ribbon parameters) and in `dashboard.html` must stay identical, so the PNG and the live avatar match. Change both or neither.
+- `scripts/self.py` must never commit a plaintext identity. Test a round trip with `HOME` pointed at a scratch directory and a local bare repo before changing it.
 
 ## Commit style
 
