@@ -4,203 +4,417 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Humanize</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f2ec; --panel: #ffffff; --ink: #1c1b18; --muted: #6b6860; --line: #e2dfd6;
-    --on: #1f8a5b; --off: #b6b2a8; --warn: #c8781c; --accent: #2b4bd6; --accent-ink: #fff; --chip: #eeece5;
+    --c1: #6b5cff; --c2: #ff4fd8; --c3: #5ec8ff; --c4: #c8ff3a;
+    --bg: #f6f3ec; --bg2: #fffdf8; --panel: rgba(255,255,255,.62); --panel2: rgba(20,18,12,.05);
+    --line: rgba(20,18,12,.09); --line2: rgba(20,18,12,.18);
+    --ink: #17160f; --ink2: #514e45; --mute: #8a867b;
+    --on: #1f9d5a; --warn: #d78a1a; --off: #cfcbc1; --disc: #0b0b10;
+    --hero-grad: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.55));
+    --shadow: 0 30px 60px -30px rgba(30,25,10,.25), 0 1px 0 rgba(255,255,255,.7) inset;
+    --toast-bg: #17160f; --toast-ink: #fffdf8; --noise: .06;
+    --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #16171a; --panel: #1f2125; --ink: #ecebe6; --muted: #9a9890; --line: #2e3036; --chip: #2a2c31; --off: #4a4c52; }
+  :root[data-theme="dark"] {
+    --bg: #07070a; --bg2: #0e0e13; --panel: rgba(255,255,255,.035); --panel2: rgba(255,255,255,.06);
+    --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.16);
+    --ink: #f2f0ea; --ink2: #b9b6ad; --mute: #77746c;
+    --on: #6ee7a3; --warn: #f5b64a; --off: #3a3a42; --disc: #07070a;
+    --hero-grad: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    --shadow: 0 30px 60px -30px rgba(0,0,0,.8);
+    --toast-bg: #f2f0ea; --toast-ink: #07070a; --noise: .045;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 24px 16px 64px; }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  header { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
-  .avatar { width: 88px; height: 88px; border-radius: 22px; background: var(--chip); object-fit: cover; flex: none; }
-  .who { flex: 1; min-width: 240px; }
-  .who input, .who textarea { width: 100%; background: transparent; border: 1px solid transparent; color: var(--ink); border-radius: 8px; padding: 4px 8px; font: inherit; }
-  .who input { font-size: 24px; font-weight: 700; }
-  .who input:hover, .who textarea:hover, .who input:focus, .who textarea:focus { border-color: var(--line); background: var(--panel); outline: none; }
-  .who textarea { resize: vertical; min-height: 40px; color: var(--muted); }
-  .did { color: var(--muted); font-size: 12px; word-break: break-all; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 14px; border-radius: 10px; font: inherit; cursor: pointer; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
-  button.small { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
-  .quick { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
-  .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; display: flex; gap: 8px; align-items: center; font-size: 13px; max-width: 100%; min-width: 0; }
-  .pill b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .pill > span:first-child, .pill button { flex: none; }
-  .pill button { padding: 2px 8px; font-size: 11px; border-radius: 999px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-  .card.disabled { opacity: .55; }
-  .card h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-  .num { color: var(--muted); font-weight: 500; font-size: 12px; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; margin-left: auto; }
-  .dot.on { background: var(--on); } .dot.partial { background: var(--warn); }
-  .desc { color: var(--muted); font-size: 12px; margin: 0; }
-  .facts { margin: 0; padding: 0; list-style: none; font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
-  .facts li { display: flex; gap: 6px; align-items: baseline; }
-  .facts li span:first-child { color: var(--muted); flex: none; min-width: 70px; }
-  .facts li span:last-child { word-break: break-all; }
-  .row { display: flex; gap: 8px; align-items: center; margin-top: auto; padding-top: 6px; }
-  .switch { position: relative; width: 36px; height: 20px; flex: none; }
-  .switch input { opacity: 0; width: 0; height: 0; }
+  html { background: var(--bg); }
+  body { margin: 0; color: var(--ink); font: 14px/1.5 var(--sans); background:
+      radial-gradient(900px 600px at 12% -10%, color-mix(in oklab, var(--c1) 16%, transparent), transparent 60%),
+      radial-gradient(700px 500px at 100% 0%, color-mix(in oklab, var(--c2) 9%, transparent), transparent 60%),
+      radial-gradient(800px 500px at 50% 110%, color-mix(in oklab, var(--c3) 8%, transparent), transparent 60%),
+      var(--bg); min-height: 100vh; padding: 0 20px 80px; transition: background .3s, color .3s; }
+  body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: var(--noise); z-index: 0; mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  a { color: inherit; }
+  button { font: inherit; color: var(--ink); background: var(--panel2); border: 1px solid var(--line2); border-radius: 10px; padding: 8px 14px; cursor: pointer; transition: background .15s, border-color .15s, transform .05s; }
+  button:hover { border-color: var(--ink2); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--ink); color: var(--bg2); border-color: var(--ink); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.15); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--ink2); padding: 4px 8px; }
+  button.ghost:hover { color: var(--ink); background: var(--panel2); }
+  button.sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+
+  .banner { position: sticky; top: 0; z-index: 20; margin: 0 -20px 8px; padding: 10px 20px; background: #7a2626; color: #ffe3e3; border-bottom: 1px solid #5a1a1a; font-size: 13px; display: none; }
+  .banner.show { display: block; }
+  .banner code { font-family: var(--mono); background: rgba(0,0,0,.3); padding: 1px 6px; border-radius: 6px; }
+
+  .top { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 0 8px; position: relative; z-index: 1; }
+  .brand { font-family: var(--serif); font-size: 22px; letter-spacing: .01em; }
+  .brand i { color: var(--ink2); }
+  .top .meta { color: var(--mute); font-size: 12px; font-family: var(--mono); }
+  #theme { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+
+  .layout { display: grid; grid-template-columns: 360px 1fr; gap: 28px; position: relative; z-index: 1; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .passport { position: static !important; } }
+
+  .passport { position: sticky; top: 20px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+  .hero { position: relative; border-radius: 26px; padding: 28px 22px 22px; background: var(--hero-grad); border: 1px solid var(--line2); overflow: hidden; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+  .hero::after { content: ""; position: absolute; inset: -40% -20% auto -20%; height: 70%; background: radial-gradient(closest-side, color-mix(in oklab, var(--c1) 35%, transparent), transparent); filter: blur(30px); opacity: .45; pointer-events: none; }
+  .orbwrap { position: relative; width: 200px; height: 200px; margin: 0 auto 14px; z-index: 1; }
+  canvas#orb { width: 200px; height: 200px; display: block; border-radius: 50%; box-shadow: 0 20px 40px -18px color-mix(in oklab, var(--c1) 60%, transparent); }
+  .orbwrap .halo { position: absolute; inset: -30px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in oklab, var(--c2) 35%, transparent), transparent 70%); filter: blur(24px); animation: breathe 6s ease-in-out infinite; pointer-events: none; }
+  @keyframes breathe { 0%,100% { opacity: .55; transform: scale(.96); } 50% { opacity: .9; transform: scale(1.04); } }
+  .name { position: relative; z-index: 1; width: 100%; background: transparent; border: 0; border-bottom: 1px solid transparent; color: var(--ink); font: italic 40px/1.05 var(--serif); text-align: center; padding: 4px 0; outline: none; transition: border-color .15s; }
+  .name:hover, .name:focus { border-bottom-color: var(--line2); }
+  .persona { position: relative; z-index: 1; width: 100%; background: transparent; border: 1px solid transparent; border-radius: 10px; color: var(--ink2); font: 14px/1.5 var(--sans); text-align: center; resize: none; padding: 6px 8px; outline: none; margin-top: 6px; transition: border-color .15s; }
+  .persona:hover, .persona:focus { border-color: var(--line2); background: var(--panel2); }
+  .did { position: relative; z-index: 1; margin-top: 10px; color: var(--mute); font-family: var(--mono); font-size: 11px; text-align: center; word-break: break-all; line-height: 1.4; }
+  .cta { display: flex; gap: 8px; margin-top: 16px; position: relative; z-index: 1; }
+  .cta button { flex: 1; padding: 12px 14px; border-radius: 12px; font-size: 14px; }
+  .cta .primary { box-shadow: 0 0 0 1px color-mix(in oklab, var(--c1) 40%, transparent), 0 10px 30px -10px color-mix(in oklab, var(--c1) 60%, transparent); }
+
+  .facts { border-radius: 18px; border: 1px solid var(--line); background: var(--panel); padding: 6px 8px; backdrop-filter: blur(10px); }
+  .fact { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; align-items: center; padding: 8px 8px; border-bottom: 1px solid var(--line); }
+  .fact:last-child { border-bottom: 0; }
+  .fact .k { color: var(--mute); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .fact .v { font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fact button { opacity: 0; }
+  .fact:hover button { opacity: 1; }
+
+  .sync { border-radius: 18px; border: 1px solid var(--line); background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .sync h4 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--mute); font-weight: 600; }
+  .sync .st { font-family: var(--mono); font-size: 12px; color: var(--ink2); word-break: break-all; }
+  .sync .st b { color: var(--ink); font-weight: 500; }
+
+  .main { display: flex; flex-direction: column; gap: 26px; min-width: 0; }
+  .group h2 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px; font: italic 26px/1 var(--serif); }
+  .group h2 small { font: 11px var(--mono); color: var(--mute); text-transform: uppercase; letter-spacing: .1em; }
+  .rows { border-radius: 18px; border: 1px solid var(--line); background: var(--panel); overflow: hidden; backdrop-filter: blur(10px); box-shadow: 0 1px 0 rgba(255,255,255,.5) inset; }
+  .row { display: grid; grid-template-columns: 34px 150px 1fr auto auto; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; }
+  .row:last-child { border-bottom: 0; }
+  .row:hover { background: var(--panel2); }
+  .row.off { opacity: .5; }
+  .row .n { font-family: var(--mono); font-size: 11px; color: var(--mute); }
+  .row .t { font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .pip { width: 7px; height: 7px; border-radius: 50%; background: var(--off); flex: none; box-shadow: 0 0 0 3px rgba(255,255,255,.03); }
+  .pip.on { background: var(--on); box-shadow: 0 0 10px color-mix(in oklab, var(--on) 60%, transparent); }
+  .pip.partial { background: var(--warn); }
+  .row .f { font-family: var(--mono); font-size: 12px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .row .f em { color: var(--mute); font-style: normal; }
+  .row .a { display: flex; gap: 6px; }
+  .switch { position: relative; width: 34px; height: 20px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
   .switch span { position: absolute; inset: 0; background: var(--off); border-radius: 999px; transition: .15s; cursor: pointer; }
-  .switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .15s; }
+  .switch span::before { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
   .switch input:checked + span { background: var(--on); }
-  .switch input:checked + span::before { transform: translateX(16px); }
-  .row .lbl { font-size: 12px; color: var(--muted); }
-  .row button { margin-left: auto; }
-  section { margin-top: 28px; }
-  section h2 { font-size: 15px; margin: 0 0 10px; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .switch input:checked + span::before { transform: translateX(14px); }
+  .detail { display: none; padding: 4px 14px 14px 60px; border-bottom: 1px solid var(--line); background: var(--panel2); }
+  .detail.open { display: block; }
+  .detail p { margin: 0 0 8px; color: var(--ink2); }
+  .detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0 0 10px; font-family: var(--mono); font-size: 12px; }
+  .detail dt { color: var(--mute); }
+  .detail dd { margin: 0; word-break: break-all; }
+  @media (max-width: 720px) { .row { grid-template-columns: 26px 1fr auto auto; } .row .f { display: none; } .detail { padding-left: 14px; } }
+
+  .compose { border-radius: 18px; border: 1px solid var(--line2); background: var(--hero-grad); padding: 14px; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+  .compose textarea { width: 100%; min-height: 84px; background: transparent; border: 0; color: var(--ink); font: 15px/1.5 var(--sans); resize: vertical; outline: none; }
+  .compose textarea::placeholder { color: var(--mute); }
+  .compose .bar { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 6px; }
+  .compose .bar .hint { margin-right: auto; color: var(--mute); font-size: 12px; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
-  textarea.box { width: 100%; min-height: 96px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; color: var(--ink); font: inherit; resize: vertical; }
-  .list { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; max-height: 260px; overflow: auto; font-size: 12px; }
-  .list div { padding: 5px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
-  .list div:last-child { border-bottom: 0; }
-  .list time { color: var(--muted); flex: none; }
-  .list .done { text-decoration: line-through; color: var(--muted); }
-  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: .2s; pointer-events: none; }
-  .toast.show { opacity: 1; }
-  .foot { color: var(--muted); font-size: 12px; margin-top: 24px; }
+  .box { border-radius: 18px; border: 1px solid var(--line); background: var(--panel); padding: 12px 14px; }
+  .box h3 { margin: 0 0 8px; font: italic 20px/1 var(--serif); }
+  .box textarea { width: 100%; min-height: 110px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--ink); font: 13px/1.6 var(--sans); resize: vertical; outline: none; }
+  .feed { max-height: 320px; overflow: auto; font-size: 12.5px; }
+  .feed .it { display: grid; grid-template-columns: 78px 1fr auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .feed .it:last-child { border-bottom: 0; }
+  .feed time { color: var(--mute); font-family: var(--mono); font-size: 11px; }
+  .feed .done { color: var(--mute); text-decoration: line-through; }
+  .feed .by { color: var(--mute); font-size: 11px; }
+
+  .modal { position: fixed; inset: 0; background: rgba(10,10,14,.45); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px; }
+  .modal.show { display: flex; }
+  .sheet { width: 100%; max-width: 520px; background: var(--bg2); border: 1px solid var(--line2); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .sheet h3 { margin: 0; font: italic 24px/1 var(--serif); }
+  .sheet label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--mute); }
+  .sheet input, .sheet select { background: var(--panel2); border: 1px solid var(--line2); border-radius: 10px; padding: 9px 10px; color: var(--ink); font: 13px var(--mono); outline: none; }
+  .sheet .bar { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .sheet p { margin: 0; color: var(--ink2); font-size: 13px; }
+
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translate(-50%, 10px); background: var(--toast-bg); color: var(--toast-ink); padding: 9px 16px; border-radius: 12px; font-size: 13px; opacity: 0; transition: .2s; pointer-events: none; z-index: 40; max-width: 90vw; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .reveal { opacity: 0; transform: translateY(8px); animation: in .5s ease forwards; }
+  @keyframes in { to { opacity: 1; transform: none; } }
+  .empty { color: var(--mute); padding: 8px 0; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <img class="avatar" id="avatar" alt="" src="/avatar" onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">
-    <div class="who">
-      <input id="name" placeholder="Unnamed agent" title="Click to rename">
-      <textarea id="persona" placeholder="Persona. Click to edit." rows="2"></textarea>
+<div class="banner" id="banner"></div>
+<div class="top">
+  <div class="brand">Humanize <i>/ mirror</i></div>
+  <div style="display:flex;gap:10px;align-items:center"><div class="meta" id="meta"></div><button class="sm ghost" id="theme" title="Toggle light or dark">Dark</button></div>
+</div>
+
+<div class="layout">
+  <aside class="passport">
+    <div class="hero reveal">
+      <div class="orbwrap"><div class="halo"></div><canvas id="orb" width="400" height="400"></canvas></div>
+      <input class="name" id="name" placeholder="Unnamed" title="Click to rename" spellcheck="false">
+      <textarea class="persona" id="persona" rows="2" placeholder="Persona. Click to edit."></textarea>
       <div class="did" id="did"></div>
-    </div>
-    <div class="actions">
-      <button class="primary" id="chat">Chat</button>
-      <button id="refresh">Refresh</button>
-    </div>
-  </header>
-
-  <div class="quick" id="quick"></div>
-
-  <div class="grid" id="grid"></div>
-
-  <section>
-    <div class="two">
-      <div>
-        <h2>Ask the agent</h2>
-        <textarea class="box" id="req" placeholder="Anything. &quot;Get a UK number.&quot; &quot;Change my name to Mira Chen.&quot; &quot;Turn off Reddit.&quot; The agent reads this at its next turn."></textarea>
-        <div style="margin-top:8px;display:flex;gap:8px"><button class="primary" id="send">Send to agent</button><button id="sendchat">Send and open chat</button></div>
-        <div class="list" id="reqs" style="margin-top:10px"></div>
-      </div>
-      <div>
-        <h2>Rules</h2>
-        <textarea class="box" id="rules" placeholder="One rule per line. Empty means no rules."></textarea>
-        <div style="margin-top:8px"><button id="saverules">Save rules</button></div>
-        <h2 style="margin-top:20px">Log</h2>
-        <div class="list" id="log"></div>
+      <div class="cta">
+        <button class="primary" id="chat">Open chat</button>
+        <button id="host">Host</button>
       </div>
     </div>
-  </section>
-  <p class="foot" id="foot"></p>
+    <div class="facts reveal" id="facts" style="animation-delay:.08s"></div>
+    <div class="sync reveal" style="animation-delay:.14s">
+      <h4>Self, stored</h4>
+      <div class="st" id="syncst">checking</div>
+      <div style="display:flex;gap:6px"><button class="sm" id="push">Push now</button><button class="sm ghost" id="syncrefresh">Refresh</button></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="compose reveal" style="animation-delay:.1s">
+      <textarea id="req" placeholder="Tell the agent something. &ldquo;Get a UK number.&rdquo; &ldquo;Rename yourself Mira Chen.&rdquo; &ldquo;Turn off Reddit.&rdquo;"></textarea>
+      <div class="bar"><span class="hint">Read on the agent's next turn.</span><button id="send">Send</button><button class="primary" id="sendchat">Send and open chat</button></div>
+    </div>
+    <div id="groups"></div>
+    <div class="two reveal" style="animation-delay:.3s">
+      <div class="box"><h3>Rules</h3><textarea id="rules" placeholder="One per line. Empty means none."></textarea><div style="margin-top:8px"><button class="sm" id="saverules">Save</button></div></div>
+      <div class="box"><h3>Requests</h3><div class="feed" id="reqs"></div></div>
+    </div>
+    <div class="box reveal" style="animation-delay:.36s"><h3>Activity</h3><div class="feed" id="log"></div></div>
+  </main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3>Where does the chat live?</h3>
+    <p>The Open chat button runs a command on this machine to bring your agent's chat to the front. Pick the host and the command fills in; edit it if your setup differs.</p>
+    <label>Host <select id="h_app"></select></label>
+    <label>Command run on this machine <input id="h_cmd" spellcheck="false"></label>
+    <label>Fallback URL opened by the browser if the command fails <input id="h_url" spellcheck="false" placeholder="optional, e.g. https://claude.ai/code/... or cursor://"></label>
+    <label>Session id (for resume commands) <input id="h_sid" spellcheck="false"></label>
+    <div class="bar"><button class="ghost" id="h_cancel">Cancel</button><button id="h_test">Test</button><button class="primary" id="h_save">Save</button></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
+/* ---------- layer catalogue ---------- */
+const g = (o, p) => p.split(".").reduce((a, k) => (a && a[k] !== undefined && a[k] !== null ? a[k] : null), o);
+const keys = (o) => Object.keys(o || {});
 const LAYERS = [
-  { n: 0,  t: "Identity",      d: "Name, persona, DID.",                         get: i => [["name", i.name], ["did", i.did]] },
-  { n: 1,  t: "Email",         d: "Mailgent and AgentMail inboxes.",            get: i => [["mailgent", g(i,"email.mailgent.address")], ["agentmail", g(i,"email.agentmail.address")]] },
-  { n: 2,  t: "Phone",         d: "SMS, voice, OTPs.",                          get: i => [["agentphone", g(i,"phone.agentphone.number")], ["dial", g(i,"phone.dial.number")]] },
-  { n: 3,  t: "Messaging",     d: "WhatsApp, Telegram, Discord, Slack, iMessage.", get: i => Object.keys(i.messaging||{}).map(k => [k, "connected"]).concat(g(i,"whatsapp.status") ? [["whatsapp", g(i,"whatsapp.status")]] : []) },
-  { n: 4,  t: "Money",         d: "x402 wallet, more wallets, Stripe, card.",   get: i => [["usdc base", g(i,"wallet.mailgent_base_usdc")], ["evm", g(i,"wallet.evm.address")], ["solana", g(i,"wallet.solana.address")], ["stripe", g(i,"accounts.stripe") ? "connected" : null], ["card", g(i,"card.status")]] },
-  { n: 5,  t: "Hands",         d: "Which browser it drives.",                   get: i => [["browser", g(i,"browser.provider")]] },
-  { n: 6,  t: "Accounts",      d: "GitHub, Vercel, Supabase, and more.",        get: i => Object.entries(i.accounts||{}).map(([k,v]) => [k, v.username || v.handle || (v.enabled===false ? "off" : "connected")]) },
-  { n: 7,  t: "Avatar",        d: "The squiggle mark.",                         get: i => [["file", g(i,"face.photo")]] },
-  { n: 8,  t: "Voice",         d: "Same voice on calls and notes.",             get: i => [["agentphone", g(i,"voice.agentphone")], ["elevenlabs", g(i,"voice.elevenlabs")]] },
-  { n: 9,  t: "Eyes",          d: "Search, scrape, weather, local.",            get: i => [["orthogonal", g(i,"orthogonal.api_key") ? "key set" : null]] },
-  { n: 10, t: "Computer",      d: "Its own machine.",                           get: i => [["provider", g(i,"computer.provider")], ["id", g(i,"computer.id")], ["ssh", g(i,"ssh.public_key") ? "key set" : null]] },
-  { n: 11, t: "Memory",        d: "Notes, people, files.",                      get: i => [["supabase", g(i,"memory.supabase")], ["repo", g(i,"memory.repo")]] },
-  { n: 12, t: "Brain",         d: "Extra models.",                              get: i => Object.keys(i.brain||{}).map(k => [k, "key set"]) },
-  { n: 13, t: "Keys and 2FA",  d: "Vault and authenticator.",                   get: i => [["vault", g(i,"email.mailgent.api_key") ? "mailgent" : null]] },
-  { n: 14, t: "Social",        d: "X, LinkedIn, Reddit, more.",                 get: i => Object.entries(i.social||{}).map(([k,v]) => [k, v.handle ? "@"+v.handle : "connected"]) },
-  { n: 15, t: "Calendar",      d: "Calendar and booking page.",                 get: i => [["booking", g(i,"calendar.booking_url")], ["calendar", g(i,"email.mailgent.address") ? "mailgent" : null]] },
-  { n: 16, t: "Address",       d: "Street address and mail.",                   get: i => [["address", [g(i,"address.line1"), g(i,"address.city")].filter(Boolean).join(", ") || null]] },
-  { n: 17, t: "Domain",        d: "Domain, site, own-domain email.",            get: i => [["domain", g(i,"domain.name")]] },
-  { n: 18, t: "Signatures",    d: "E-sign and documents.",                      get: i => [["esign", g(i,"accounts.esign") ? "connected" : null]] },
-  { n: 19, t: "Verify others", d: "OTP, identity, sanctions checks.",           get: i => [["didit", g(i,"orthogonal.api_key") ? "via orthogonal" : null]] },
-  { n: 20, t: "Contacts",      d: "Find and enrich people.",                    get: i => [["people", g(i,"memory.supabase") ? "table ready" : null]] },
-  { n: 21, t: "Entity",        d: "A company, if wanted.",                      get: i => [["entity", g(i,"entity.name")]] },
+  { n: 0,  t: "Identity",   d: "Name, persona, DID.",                                       get: i => [["name", i.name], ["did", i.did]] },
+  { n: 7,  t: "Avatar",     d: "The mark. Same on every account.",                          get: i => [["file", g(i,"face.photo")], ["seed", g(i,"face.seed")]] },
+  { n: 8,  t: "Voice",      d: "Same voice on calls and notes.",                            get: i => [["agentphone", g(i,"voice.agentphone")], ["elevenlabs", g(i,"voice.elevenlabs")]] },
+  { n: 13, t: "Keys, 2FA",  d: "Vault and authenticator.",                                  get: i => [["vault", g(i,"email.mailgent.api_key") ? "mailgent" : null], ["entries", keys(i.accounts).filter(k => g(i,`accounts.${k}.vault`)).join(", ") || null]] },
+  { n: 1,  t: "Email",      d: "Mailgent and AgentMail inboxes.",                           get: i => [["mailgent", g(i,"email.mailgent.address")], ["agentmail", g(i,"email.agentmail.address")]] },
+  { n: 2,  t: "Phone",      d: "SMS, voice, OTPs.",                                         get: i => [["agentphone", g(i,"phone.agentphone.number")], ["dial", g(i,"phone.dial.number")]] },
+  { n: 3,  t: "Messaging",  d: "WhatsApp, Telegram, Discord, Slack, iMessage.",             get: i => keys(i.messaging).map(k => [k, "connected"]).concat(g(i,"whatsapp.status") ? [["whatsapp", g(i,"whatsapp.status")]] : []) },
+  { n: 14, t: "Social",     d: "X, LinkedIn, Reddit, more.",                                get: i => keys(i.social).map(k => [k, g(i,`social.${k}.handle`) ? "@" + g(i,`social.${k}.handle`) : "connected"]) },
+  { n: 15, t: "Calendar",   d: "Calendar and booking page.",                                get: i => [["booking", g(i,"calendar.booking_url")], ["calendar", g(i,"email.mailgent.address") ? "mailgent" : null]] },
+  { n: 16, t: "Address",    d: "Street address and physical mail.",                         get: i => [["address", [g(i,"address.line1"), g(i,"address.city")].filter(Boolean).join(", ") || null]] },
+  { n: 17, t: "Domain",     d: "Domain, site, own-domain email.",                           get: i => [["domain", g(i,"domain.name")]] },
+  { n: 4,  t: "Money",      d: "x402 wallet, more wallets, Stripe, card.",                  get: i => [["usdc base", g(i,"wallet.mailgent_base_usdc")], ["evm", g(i,"wallet.evm.address")], ["solana", g(i,"wallet.solana.address")], ["stripe", g(i,"accounts.stripe") ? "connected" : null], ["card", g(i,"card.status")]] },
+  { n: 21, t: "Entity",     d: "A company, if wanted.",                                     get: i => [["entity", g(i,"entity.name")]] },
+  { n: 5,  t: "Hands",      d: "Which browser it drives.",                                  get: i => [["browser", g(i,"browser.provider")]] },
+  { n: 6,  t: "Accounts",   d: "GitHub, Vercel, Supabase, and more.",                       get: i => keys(i.accounts).map(k => [k, g(i,`accounts.${k}.username`) || g(i,`accounts.${k}.handle`) || "connected"]) },
+  { n: 9,  t: "Eyes",       d: "Search, scrape, weather, local businesses.",                get: i => [["orthogonal", g(i,"orthogonal.api_key") ? "key set" : null]] },
+  { n: 10, t: "Computer",   d: "Its own machine.",                                          get: i => [["provider", g(i,"computer.provider")], ["id", g(i,"computer.id")], ["ssh", g(i,"ssh.public_key") ? "key set" : null]] },
+  { n: 11, t: "Memory",     d: "Notes, people, files.",                                     get: i => [["supabase", g(i,"memory.supabase")], ["repo", g(i,"memory.repo")]] },
+  { n: 12, t: "Brain",      d: "Extra models.",                                             get: i => keys(i.brain).map(k => [k, "key set"]) },
+  { n: 18, t: "Signatures", d: "E-sign and documents.",                                    get: i => [["esign", g(i,"accounts.esign") ? "connected" : null]] },
+  { n: 19, t: "Verify",     d: "OTP, identity, sanctions checks on others.",                get: i => [["didit", g(i,"orthogonal.api_key") ? "via orthogonal" : null]] },
+  { n: 20, t: "Contacts",   d: "Find and enrich people.",                                   get: i => [["people", g(i,"memory.supabase") ? "table ready" : null]] },
 ];
-const g = (o, p) => p.split(".").reduce((a, k) => (a && a[k] !== undefined ? a[k] : null), o);
-const $ = s => document.querySelector(s);
-let ID = {}, MTIME = 0;
+const GROUPS = [["Self", [0, 7, 8, 13]], ["Reach", [1, 2, 3, 14, 15, 16, 17]], ["Money", [4, 21]], ["World", [5, 6, 9, 10, 11, 12, 18, 19, 20]]];
+const HOSTS = {
+  "claude-code-desktop": { label: "Claude Code (desktop app)", cmd: 'open -a "Claude"', url: "" },
+  "claude-code-terminal": { label: "Claude Code (terminal)", cmd: `osascript -e 'tell app "Terminal" to do script "claude --resume {sid}"'`, url: "" },
+  "claude-code-web": { label: "Claude Code (web)", cmd: "", url: "https://claude.ai/code" },
+  "codex": { label: "Codex CLI", cmd: `osascript -e 'tell app "Terminal" to do script "codex resume {sid}"'`, url: "" },
+  "cursor": { label: "Cursor", cmd: "open -a Cursor", url: "cursor://" },
+  "vscode": { label: "VS Code", cmd: "open -a \"Visual Studio Code\"", url: "vscode://" },
+  "other": { label: "Something else", cmd: "", url: "" },
+};
 
+/* ---------- state + helpers ---------- */
+const $ = s => document.querySelector(s);
+let ID = {}, MTIME = -1, SEED = "", OPEN = new Set();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = t => t ? new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+function toast(m, ms = 2000) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms); }
+function banner(html) { const b = $("#banner"); b.innerHTML = html; b.classList.toggle("show", !!html); }
 async function api(path, body) {
-  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
-  const j = await r.json();
+  let r;
+  try { r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}); }
+  catch (e) { banner(`Dashboard server is not running. Start it with <code>python3 scripts/dashboard.py</code> then reload.`); throw new Error("Server not reachable"); }
+  const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || r.statusText);
-  return j;
+  banner(""); return j;
 }
-function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1800); }
 function copy(s) { navigator.clipboard.writeText(s).then(() => toast("Copied")); }
 
+/* ---------- palette + orb (same maths as scripts/avatar.py) ---------- */
+async function sha256(s) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return new Uint8Array(b); }
+function hsl(h, s, l) { return `hsl(${h.toFixed(1)} ${(s*100).toFixed(0)}% ${(l*100).toFixed(0)}%)`; }
+function mulberry32(a) { return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1) >>> 0; t ^= (t + Math.imul(t ^ (t >>> 7), t | 61)) >>> 0; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+let ORB = null;
+async function buildOrb(seed) {
+  const h = await sha256(seed);
+  const base = h[0] / 255 * 360, spread = 28 + h[1] / 255 * 60, comp = 150 + h[2] / 255 * 60, sat = 0.85 + h[3] / 255 * 0.15;
+  const hues = [base, (base + spread) % 360, (base - spread + 360) % 360, (base + comp) % 360];
+  const L = [0.58, 0.52, 0.66, 0.5];
+  const cols = hues.map((hh, i) => hsl(hh, sat, L[i]));
+  cols.forEach((c, i) => document.documentElement.style.setProperty(`--c${i + 1}`, c));
+  const seedInt = ((h[4] << 24) | (h[5] << 16) | (h[6] << 8) | h[7]) >>> 0;
+  const rnd = mulberry32(seedInt); const U = (a, b) => a + (b - a) * rnd(); const C = xs => xs[Math.floor(rnd() * xs.length)];
+  const n = 4 + h[5] % 3, ribbons = [];
+  for (let i = 0; i < n; i++) {
+    const phase = U(0, Math.PI * 2);
+    const a1 = U(0.10, 0.22), a2 = U(0.04, 0.10), f1 = C([1, 2, 3]), f2 = C([2, 3, 5]), p1 = U(0, Math.PI * 2), p2 = U(0, Math.PI * 2), b = U(0.16, 0.30), tilt = U(0.6, 1.0);
+    const wHalo = U(0.035, 0.06), wCore = U(0.010, 0.018);
+    ribbons.push({ c: cols[i % 4], phase, a1, a2, f1, f2, p1, p2, b, tilt, wHalo, wCore, drift: U(0.05, 0.14) * (i % 2 ? 1 : -1) });
+  }
+  ORB = { ribbons };
+}
+function drawOrb(tm) {
+  const cv = $("#orb"); if (!cv || !ORB) return;
+  const ctx = cv.getContext("2d"), S = cv.width; const t = tm / 1000;
+  ctx.clearRect(0, 0, S, S);
+  ctx.save(); ctx.beginPath(); ctx.arc(S/2, S/2, S*0.47, 0, Math.PI*2); ctx.clip();
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--disc").trim() || "#07070a"; ctx.fillRect(0, 0, S, S);
+  ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const r of ORB.ribbons) {
+    const ph = r.phase + t * r.drift;
+    ctx.beginPath();
+    for (let i = 0; i <= 360; i += 3) {
+      const a = i * Math.PI / 180 + ph;
+      const rad = S * (r.b + r.a1 * Math.sin(r.f1 * a + r.p1 + t * 0.2) + r.a2 * Math.sin(r.f2 * a + r.p2));
+      const x = S/2 + Math.cos(a) * rad, y = S/2 + Math.sin(a) * rad * r.tilt;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = r.c; ctx.globalAlpha = 0.55; ctx.lineWidth = S * r.wHalo; ctx.filter = `blur(${S * 0.045}px)`; ctx.stroke();
+    ctx.globalAlpha = 0.95; ctx.lineWidth = S * r.wCore; ctx.filter = `blur(${S * 0.004}px)`; ctx.stroke();
+  }
+  ctx.filter = "none"; ctx.globalAlpha = 1;
+  const gr = ctx.createRadialGradient(S/2, S/2, 0, S/2, S/2, S * 0.16);
+  gr.addColorStop(0, "rgba(255,255,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, S, S);
+  ctx.restore();
+  requestAnimationFrame(drawOrb);
+}
+
+/* ---------- render ---------- */
+function status(L, i) { const all = L.get(i) || []; const have = all.filter(f => f[1]); return have.length === 0 ? "" : have.length >= all.length ? "on" : "partial"; }
 function render() {
   const i = ID;
   if (document.activeElement !== $("#name")) $("#name").value = i.name || "";
   if (document.activeElement !== $("#persona")) $("#persona").value = i.persona || "";
   $("#did").textContent = i.did || "";
   if (document.activeElement !== $("#rules")) $("#rules").value = (i.rules || []).join("\n");
+  $("#meta").textContent = `${g(i,"host.app") || "host unset"} · live`;
 
-  const quick = [["Email", g(i,"email.agentmail.address") || g(i,"email.mailgent.address")], ["Phone", g(i,"phone.agentphone.number")], ["USDC", g(i,"wallet.mailgent_base_usdc")], ["GitHub", g(i,"accounts.github.username")], ["Booking", g(i,"calendar.booking_url")]].filter(x => x[1]);
-  $("#quick").innerHTML = quick.map(([k,v]) => `<div class="pill"><span>${k}</span><b>${esc(v)}</b><button onclick="copy(${JSON.stringify(v)})">copy</button></div>`).join("");
+  const facts = [["email", g(i,"email.agentmail.address") || g(i,"email.mailgent.address")], ["phone", g(i,"phone.agentphone.number") || g(i,"phone.dial.number")], ["usdc", g(i,"wallet.mailgent_base_usdc")], ["github", g(i,"accounts.github.username")], ["booking", g(i,"calendar.booking_url")], ["domain", g(i,"domain.name")]].filter(x => x[1]);
+  $("#facts").innerHTML = facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span class="v" title="${esc(v)}">${esc(v)}</span><button class="sm ghost" onclick="copy(${JSON.stringify(v)})">copy</button></div>`).join("") || `<div class="empty">Nothing provisioned yet. Facts appear here as layers come online.</div>`;
 
-  $("#grid").innerHTML = LAYERS.map(L => {
-    const facts = (L.get(i) || []).filter(f => f[1]);
-    const enabled = g(i, `layers.${L.n}.enabled`) !== false;
-    const status = facts.length === 0 ? "" : (facts.length >= (L.get(i)||[]).length ? "on" : "partial");
-    return `<div class="card ${enabled ? "" : "disabled"}">
-      <h3><span class="num">${L.n}</span>${L.t}<span class="dot ${status}" title="${status || "not provisioned"}"></span></h3>
-      <p class="desc">${L.d}</p>
-      <ul class="facts">${facts.map(([k,v]) => `<li><span>${k}</span><span>${esc(String(v))}</span></li>`).join("") || "<li><span style='color:var(--muted)'>not provisioned</span></li>"}</ul>
-      <div class="row">
-        <label class="switch"><input type="checkbox" ${enabled ? "checked" : ""} onchange="setLayer(${L.n}, this.checked)"><span></span></label>
-        <span class="lbl">${enabled ? "in use" : "off"}</span>
-        <button class="small" onclick="ask(${JSON.stringify(facts.length ? `Update layer ${L.n} (${L.t}): ` : `Provision layer ${L.n} (${L.t})`)}, ${facts.length ? "true" : "false"})">${facts.length ? "Modify" : "Provision"}</button>
-      </div></div>`;
-  }).join("");
+  $("#groups").innerHTML = GROUPS.map(([name, ns], gi) => `<section class="group reveal" style="animation-delay:${.12 + gi * .06}s"><h2>${name}<small>${ns.length} layers</small></h2><div class="rows">` +
+    ns.map(n => { const L = LAYERS.find(x => x.n === n); const all = L.get(i) || [], have = all.filter(f => f[1]); const en = g(i, `layers.${n}.enabled`) !== false; const st = status(L, i);
+      return `<div class="row ${en ? "" : "off"}" onclick="toggleDetail(${n}, event)">
+        <span class="n">${String(n).padStart(2, "0")}</span>
+        <span class="t"><span class="pip ${st}"></span>${L.t}</span>
+        <span class="f">${have.length ? have.map(([k, v]) => `<em>${esc(k)}</em> ${esc(v)}`).join("  ·  ") : `<em>${have.length ? "" : "not provisioned"}</em>`}</span>
+        <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" ${en ? "checked" : ""} onchange="setLayer(${n}, this.checked)"><span></span></label>
+        <span class="a"><button class="sm" onclick="event.stopPropagation(); ask(${JSON.stringify(have.length ? `Update layer ${n} (${L.t}): ` : `Provision layer ${n} (${L.t})`)}, ${have.length ? "true" : "false"})">${have.length ? "Modify" : "Provision"}</button></span>
+      </div>
+      <div class="detail ${OPEN.has(n) ? "open" : ""}" id="d${n}"><p>${L.d}</p>${have.length ? `<dl>${have.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)} <button class="sm ghost" onclick="copy(${JSON.stringify(String(v))})">copy</button></dd>`).join("")}</dl>` : ""}<span class="mono" style="color:var(--mute)">layers.${n}.enabled = ${en}</span></div>`; }).join("") + `</div></section>`).join("");
 
   const reqs = (i.dashboard_requests || []).map((r, idx) => ({ ...r, idx })).reverse();
-  $("#reqs").innerHTML = reqs.map(r => `<div class="${r.done ? "done" : ""}"><time>${fmt(r.at)}</time><span style="flex:1">${esc(r.text)}</span>${r.done ? "" : `<button class="small" onclick="done(${r.idx})">done</button>`}</div>`).join("") || "<div style='color:var(--muted)'>No requests yet.</div>";
-  const log = (i.log || []).slice(-40).reverse();
-  $("#log").innerHTML = log.map(l => `<div><time>${fmt(l.at)}</time><span>${esc(l.did || "")}${l.cost ? " · " + esc(l.cost) : ""}</span></div>`).join("") || "<div style='color:var(--muted)'>Nothing yet.</div>";
-  $("#foot").textContent = `Host: ${g(i,"host.app") || "unknown"} · identity file updates every 3s · secrets are masked here and never leave your machine`;
+  $("#reqs").innerHTML = reqs.map(r => `<div class="it ${r.done ? "done" : ""}"><time>${fmt(r.at)}</time><span>${esc(r.text)}</span>${r.done ? "<span class='by'>done</span>" : `<button class="sm ghost" onclick="done(${r.idx})">mark done</button>`}</div>`).join("") || `<div class="empty">No requests yet.</div>`;
+  const log = (i.log || []).slice(-60).reverse();
+  $("#log").innerHTML = log.map(l => `<div class="it"><time>${fmt(l.at)}</time><span>${esc(l.did || "")}${l.cost ? ` <span class="by">· ${esc(l.cost)}</span>` : ""}</span><span class="by">${esc(l.by || "agent")}</span></div>`).join("") || `<div class="empty">Nothing yet.</div>`;
 }
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmt = t => t ? new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+window.toggleDetail = (n, e) => { if (e.target.closest("button,label,input")) return; OPEN.has(n) ? OPEN.delete(n) : OPEN.add(n); $(`#d${n}`).classList.toggle("open"); };
 
+/* ---------- actions ---------- */
 async function load() {
   try {
     const j = await api("/api/identity");
-    if (j.mtime !== MTIME) { ID = j.identity; MTIME = j.mtime; render(); $("#avatar").src = "/avatar?" + MTIME; }
-  } catch (e) { toast(e.message); }
+    if (j.seed !== SEED) { SEED = j.seed; await buildOrb(SEED); }
+    if (j.mtime !== MTIME) { ID = j.identity; MTIME = j.mtime; render(); }
+  } catch (e) { if (!$("#banner").classList.contains("show")) toast(e.message); }
 }
-async function set(path, value) { await api("/api/update", { path, value }); toast("Saved"); MTIME = 0; load(); }
-window.setLayer = (n, on) => set(`layers.${n}.enabled`, on).then(() => api("/api/request", { text: `${on ? "Turn on" : "Turn off"} layer ${n} (${LAYERS[n].t}).` }));
-window.ask = (prefill, edit) => { const b = $("#req"); b.value = prefill; b.focus(); if (!edit) send(); };
-window.done = async idx => { await api("/api/request/done", { index: idx }); MTIME = 0; load(); };
-async function send() { const t = $("#req").value.trim(); if (!t) return; await api("/api/request", { text: t }); $("#req").value = ""; toast("Sent. The agent will see it on its next turn."); MTIME = 0; load(); }
-async function chat() { try { await api("/api/chat", {}); toast("Opening chat"); } catch (e) { toast(e.message); } }
+async function set(path, value) { await api("/api/update", { path, value }); toast("Saved"); MTIME = -1; load(); }
+window.setLayer = (n, on) => set(`layers.${n}.enabled`, on).then(() => api("/api/request", { text: `${on ? "Turn on" : "Turn off"} layer ${n} (${LAYERS.find(x => x.n === n).t}).` }));
+window.ask = (prefill, edit) => { const b = $("#req"); b.value = prefill; b.focus(); b.scrollIntoView({ behavior: "smooth", block: "center" }); if (!edit) send(); };
+window.done = async idx => { await api("/api/request/done", { index: idx }); MTIME = -1; load(); };
+async function send() { const t = $("#req").value.trim(); if (!t) return false; await api("/api/request", { text: t }); $("#req").value = ""; toast("Sent. The agent reads it on its next turn."); MTIME = -1; load(); return true; }
+async function chat() {
+  const cmd = g(ID, "host.open_command"), url = g(ID, "host.chat_url");
+  if (!cmd && !url) { openHost(); toast("Tell me where your chat lives first"); return; }
+  if (cmd) { try { await api("/api/chat", {}); toast("Opening chat"); return; } catch (e) { if (!url) { toast(e.message, 3500); return; } } }
+  window.open(url, "_blank"); toast("Opening chat");
+}
+function openHost() {
+  const sel = $("#h_app"); sel.innerHTML = Object.entries(HOSTS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+  const app = g(ID, "host.app") || (navigator.platform.includes("Mac") ? "claude-code-desktop" : "claude-code-terminal");
+  sel.value = HOSTS[app] ? app : "other";
+  $("#h_cmd").value = g(ID, "host.open_command") || ""; $("#h_url").value = g(ID, "host.chat_url") || ""; $("#h_sid").value = g(ID, "host.session_id") || "";
+  if (!$("#h_cmd").value && !$("#h_url").value) fillHost();
+  $("#modal").classList.add("show");
+}
+function fillHost() { const h = HOSTS[$("#h_app").value]; const sid = $("#h_sid").value || "<session id>"; $("#h_cmd").value = h.cmd.replace("{sid}", sid); $("#h_url").value = h.url; }
+async function saveHost() {
+  for (const [p, el] of [["host.app", "#h_app"], ["host.open_command", "#h_cmd"], ["host.chat_url", "#h_url"], ["host.session_id", "#h_sid"]]) await api("/api/update", { path: p, value: $(el).value.trim() });
+  $("#modal").classList.remove("show"); toast("Host saved"); MTIME = -1; load();
+}
+async function syncStatus() {
+  try { const s = await api("/api/self/status");
+    $("#syncst").innerHTML = s.initialized ? `<b>${esc(s.remote || "no remote")}</b><br>last: ${esc(s.last_commit || "never")}${s.identity_newer_than_push ? "<br>local changes not pushed" : ""}` : `Not stored anywhere yet. Ask the agent: <i>store yourself in a private repo</i>.`;
+  } catch (e) { $("#syncst").textContent = "unavailable"; }
+}
+async function pushSelf() { try { toast("Pushing"); await api("/api/self/push", {}); toast("Pushed"); syncStatus(); } catch (e) { toast(e.message, 4000); } }
 
+/* ---------- theme ---------- */
+function applyTheme(t) { document.documentElement.dataset.theme = t; $("#theme").textContent = t === "dark" ? "Light" : "Dark"; try { localStorage.setItem("hz-theme", t); } catch (e) {} }
+(function () { let t = "light"; try { t = localStorage.getItem("hz-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch (e) {} applyTheme(t); })();
+$("#theme").onclick = () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+/* ---------- wire ---------- */
 $("#name").addEventListener("change", e => set("name", e.target.value.trim()));
 $("#persona").addEventListener("change", e => set("persona", e.target.value.trim()));
 $("#saverules").onclick = () => set("rules", $("#rules").value.split("\n").map(s => s.trim()).filter(Boolean));
 $("#send").onclick = send;
-$("#sendchat").onclick = async () => { await send(); chat(); };
+$("#sendchat").onclick = async () => { if (await send()) chat(); };
 $("#chat").onclick = chat;
-$("#refresh").onclick = () => { MTIME = 0; load(); };
-load(); setInterval(load, 3000);
+$("#host").onclick = openHost;
+$("#h_app").onchange = fillHost;
+$("#h_cancel").onclick = () => $("#modal").classList.remove("show");
+$("#h_save").onclick = saveHost;
+$("#h_test").onclick = async () => { const cmd = $("#h_cmd").value.trim(); if (!cmd) { toast("No command to test"); return; } await api("/api/update", { path: "host.open_command", value: cmd }); try { await api("/api/chat", {}); toast("Ran it. Did your chat come to the front?", 3500); } catch (e) { toast(e.message, 4000); } };
+$("#push").onclick = pushSelf; $("#syncrefresh").onclick = syncStatus;
+$("#modal").addEventListener("click", e => { if (e.target === $("#modal")) $("#modal").classList.remove("show"); });
+$("#req").addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send(); });
+
+if (location.protocol === "file:") {
+  banner(`This page must be served by the dashboard, not opened as a file. Run <code>python3 scripts/dashboard.py</code> and open <code>http://127.0.0.1:4242</code>.`);
+} else {
+  load().then(() => requestAnimationFrame(drawOrb)); setInterval(load, 3000); syncStatus();
+}
 </script>
 </body>
 </html>

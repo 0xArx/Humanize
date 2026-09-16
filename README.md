@@ -15,7 +15,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 4 | Money: x402 USDC wallet, more wallets, Stripe, a card | Mailgent wallet, local keygen, Stripe, AgentWallet or AgentCard | fund once; card needs one ID check |
 | 5 | A browser it can drive | the host's own browser tools, Notte via Orthogonal as fallback | no |
 | 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol with its own inbox and number | no |
-| 7 | An avatar: abstract squiggle mark, not a face | `scripts/avatar.py`, local | no |
+| 7 | An avatar: flowing luminous ribbons, unique colours, not a face | `scripts/avatar.py`, local | no |
 | 8 | A voice | AgentPhone voice library, ElevenLabs via Orthogonal | no |
 | 9 | Eyes on the world: search, scrape, weather, local businesses | Exa, Tavily, Perplexity, Olostep, Openmart, Precip via Orthogonal | Orthogonal key |
 | 10 | Its own computer | Smol Machines via Orthogonal, or E2B, Fly.io, Hetzner via GitHub login | no |
@@ -31,6 +31,7 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 | 20 | Contacts and people lookup | Hunter, People Data Labs, Apollo, Edges via Orthogonal | Orthogonal key |
 | 21 | A legal entity | Stripe Atlas, Firstbase, doola | sign formation docs |
 | 22 | A dashboard: see everything, switch layers, edit, ask, open chat | `scripts/dashboard.py`, local | no |
+| 23 | Itself, stored: encrypted private repo, loadable on any machine | `scripts/self.py`, GitHub | keep the self key |
 | last | Rules, only if you want them | you | if you want |
 
 Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours, so it never has to stop and ask you for a code. The base identity (inbox, phone, avatar, voice, vault, calendar, GitHub, Vercel, Supabase) runs in one session with no input from you and no API key to start: the agent signs itself up for each. The only things it cannot do alone are the ones the law ties to a real person: an identity check for a card, bank details for payouts, a notarised form for a mailbox, signing to form a company.
@@ -67,7 +68,17 @@ It reads `~/.humanize/identity.json`, provisions whatever is missing, and gets o
 python3 scripts/dashboard.py
 ```
 
-Opens `http://127.0.0.1:4242`: the avatar, name, persona and DID at the top, copy buttons for the email, number, wallet and handles, one card per layer with a status dot and an on/off switch, a box to send the agent a request, the rules editor, and the log. The Chat button reopens whatever app the agent runs in (Claude Code, Codex, Cursor, VS Code). Secrets are masked before they reach the browser. The page updates itself every few seconds, so you can watch the bootstrap fill it in.
+Opens `http://127.0.0.1:4242`. The live animated avatar, name and persona you can edit in place, DID, copy rows for email, number, wallet and handles. Layers grouped as Self, Reach, Money and World, each with a status pip, its facts, an on/off switch and a Provision or Modify button. A composer to send the agent a request, the rules editor, requests and activity feeds, and a panel showing whether the agent's self is pushed to its repo. Open chat brings back whatever app the agent runs in (Claude Code, Codex, Cursor, VS Code); the Host button lets you pick and test that. Secrets are masked before they reach the browser. The page updates itself every few seconds.
+
+## Load it anywhere
+
+```bash
+export HUMANIZE_SELF_KEY=<the self key the agent gave you>
+curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/scripts/self.py -o self.py
+python3 self.py load https://github.com/<agent>/self.git
+```
+
+The agent's identity, avatar, rules and dashboard come back on any machine. The repo is private and the identity file inside it is encrypted; the self key is the only thing you keep.
 
 ## Rules are yours to set
 
@@ -77,9 +88,10 @@ Humanize ships with none. When setup finishes the agent asks you one question: d
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | The skill. Layers 0 to 22, commands, costs, identity file schema, and the rules step. |
+| `SKILL.md` | The skill. Layers 0 to 23, commands, costs, identity file schema, and the rules step. |
 | `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
-| `scripts/avatar.py` | Draws the agent's squiggle avatar from its name. Deterministic, needs only Pillow. |
+| `scripts/avatar.py` | Draws the agent's avatar, flowing ribbons in its own colours, from a seed. Deterministic, needs only Pillow. |
+| `scripts/self.py` | Stores the agent in a private git repo, identity encrypted with a self key, and loads it back on any machine. |
 | `scripts/dashboard.py`, `scripts/dashboard.html` | Local dashboard. Stdlib Python server plus one HTML page. Reads and writes the identity file, masks secrets, runs the host's open-chat command. |
 | `README.md` | This file. |
 

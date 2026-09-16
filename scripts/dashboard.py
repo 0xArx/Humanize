@@ -40,10 +40,13 @@ def set_path(d, path, value):
         d = d.setdefault(k, {})
     d[keys[-1]] = value
 
-ALLOWED = re.compile(r"^(name|persona|rules|host\.(app|open_command|session_id)|layers\.[0-9]+\.(enabled|note)|accounts\.[a-z0-9_]+\.enabled|social\.[a-z0-9_]+\.enabled|messaging\.[a-z0-9_]+\.enabled)$")
+ALLOWED = re.compile(r"^(name|persona|rules|host\.(app|open_command|session_id|chat_url)|layers\.[0-9]+\.(enabled|note)|accounts\.[a-z0-9_]+\.enabled|social\.[a-z0-9_]+\.enabled|messaging\.[a-z0-9_]+\.enabled)$")
 
 class H(BaseHTTPRequestHandler):
     identity = None
+    def env(self):
+        e = dict(os.environ); e["HOME"] = str(self.identity.parent.parent) if self.identity.parent.name == ".humanize" else e.get("HOME", "")
+        return e
     def log_message(self, *a): pass
     def send(self, code, body, ctype="application/json"):
         if not isinstance(body, (bytes, bytearray)):
@@ -59,7 +62,12 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, (HERE / "dashboard.html").read_bytes(), "text/html; charset=utf-8")
         if self.path == "/api/identity":
             d = load(self.identity)
-            return self.send(200, {"identity": mask(d), "path": str(self.identity), "mtime": self.identity.stat().st_mtime if self.identity.exists() else 0})
+            return self.send(200, {"identity": mask(d), "path": str(self.identity), "mtime": self.identity.stat().st_mtime if self.identity.exists() else 0,
+                                   "seed": (d.get("face") or {}).get("seed") or d.get("name") or "agent"})
+        if self.path == "/api/self/status":
+            r = subprocess.run([sys.executable, str(HERE / "self.py"), "status"], text=True, capture_output=True, env=self.env())
+            try: return self.send(200, json.loads(r.stdout))
+            except Exception: return self.send(200, {"initialized": False, "error": (r.stderr or r.stdout).strip()[:300]})
         if self.path == "/avatar":
             d = load(self.identity)
             p = Path(os.path.expanduser((d.get("face") or {}).get("photo") or "~/.humanize/face.png"))
@@ -87,6 +95,10 @@ class H(BaseHTTPRequestHandler):
             try: d["dashboard_requests"][i]["done"] = True
             except Exception: return self.send(400, {"error": "bad index"})
             save(self.identity, d); return self.send(200, {"ok": True})
+        if self.path == "/api/self/push":
+            r = subprocess.run([sys.executable, str(HERE / "self.py"), "push"], text=True, capture_output=True, env=self.env())
+            if r.returncode: return self.send(500, {"error": (r.stderr or r.stdout).strip()[:400]})
+            return self.send(200, {"ok": True, "out": r.stdout.strip()[:400]})
         if self.path == "/api/chat":
             cmd = (d.get("host") or {}).get("open_command")
             if not cmd:
