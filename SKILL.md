@@ -22,7 +22,7 @@ Everything the agent owns lives in one file: `~/.humanize/identity.json`. Create
   "whatsapp": { "status": "pending", "number": "+14155550123" },
   "card": { "status": "not_provisioned" },
   "browser": { "provider": "claude-browser" },
-  "face": { "photo": "~/.humanize/face.png", "tavus": "p..." },
+  "face": { "photo": "~/.humanize/face.png" },
   "voice": { "elevenlabs": "voice_id" },
   "messaging": { "telegram": { "token": "..." }, "discord": { "token": "..." } },
   "wallet": { "evm": { "address": "0x..." }, "solana": { "address": "..." } },
@@ -252,7 +252,7 @@ Run `orth search "<service>"` first. If it is there, the account may not even be
 
 ## Layer 7: Face
 
-A human has a face. The agent needs one for profile pictures, video calls, and anywhere an avatar is asked for.
+A human has a face. The agent needs one for profile pictures and anywhere an avatar is asked for.
 
 **Profile photo.** Generate once, reuse everywhere.
 
@@ -261,8 +261,6 @@ orth run nano-banana "/v1beta/models/gemini-2.5-flash-image:generateContent" --b
 ```
 
 Decode the base64, save to `~/.humanize/face.png`, and upload it as the avatar on every account in Layer 6. Store the path under `face.photo`.
-
-**Video presence.** Tavus gives the agent a talking video replica that can join real-time video conversations. Create a persona from the face photo and a Layer 8 voice, list with `orth run tavus /v2/personas`, start a call with `orth run tavus /v2/conversations --body '{"persona_id":"..."}'`. Store `persona_id` under `face.tavus`. HeyGen and D-ID are direct alternatives with the same shape.
 
 ## Layer 8: Voice
 
@@ -365,7 +363,7 @@ A human has a calendar others can book into.
 
 - **Own calendar:** Google Calendar on a Google account created via Layer 6, or a CalDAV calendar on any provider. Store the OAuth refresh token or app password under `calendar`.
 - **Booking page:** Cal.com (`cal.com/signup`, API at `api.cal.com/v2`) gives the agent a public link like `cal.com/ari-vale/15min`. Put the link in email signatures and profiles.
-- **Meetings:** Google Meet or Zoom links come from the calendar. Tavus from Layer 7 lets the agent actually appear on the call.
+- **Meetings:** Google Meet or Zoom links come from the calendar. The agent joins by voice (Layer 8) where the host supports it.
 
 ## Layer 16: Address and physical mail
 
