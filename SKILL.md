@@ -1,6 +1,6 @@
 ---
 name: humanize
-description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus a face, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, and a legal entity. Uses Orthogonal where it has a provider and goes direct to vendors everywhere else. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, a photo, a voice, a computer, or an address.
+description: Turn an AI agent into a functioning person. Provisions everything a human has and an agent normally lacks, step by step, through APIs. An email inbox (AgentMail), a phone number with SMS and voice (AgentPhone), WhatsApp, a payment card, a browser, accounts on GitHub, Vercel, Supabase and any service, plus an avatar, a voice, web search, its own computer, memory, extra models, a password and 2FA store, social profiles, a calendar, a street address, a domain, e-signatures, a crypto wallet, and a legal entity. Uses Orthogonal where it has a provider and goes direct to vendors everywhere else. Use when the user says humanize, give my agent an email or phone, sign my agent up for X, get a token for X, or the agent hits a wall that needs an inbox, a number, a card, an account, an avatar, a voice, a computer, or an address.
 ---
 
 # Humanize
@@ -345,7 +345,7 @@ That makes the agent its own authenticator app, so 2FA never blocks it.
 
 ## Layer 14: Social presence
 
-A human has profiles. The agent gets accounts on the networks it needs, each via the Layer 6 protocol with the Layer 7 photo as avatar and the Layer 0 persona as bio.
+A human has profiles. The agent gets accounts on the networks it needs, each via the Layer 6 protocol with the Layer 7 mark as avatar and the Layer 0 persona as bio.
 
 | Network | Sign up | Then |
 |---------|---------|------|
@@ -355,7 +355,7 @@ A human has profiles. The agent gets accounts on the networks it needs, each via
 | GitHub | already done in Layer 6 | fill in bio, avatar, README profile |
 | Product Hunt, Hacker News, Dev.to | sign up with the agent's email | post via browser or API where one exists |
 
-Store handle and token under `social.<network>`. A consistent name, photo, and bio across all of them is what makes the agent read as one person.
+Store handle and token under `social.<network>`. A consistent name, avatar, and bio across all of them is what makes the agent read as one person.
 
 ## Layer 15: Calendar and scheduling
 
@@ -378,7 +378,7 @@ Some sign-ups, deliveries, and registrations need a street address.
 A human has a home on the web and an email at their own domain.
 
 1. Buy a domain. Namecheap, Porkbun, and Cloudflare Registrar all have APIs; Vercel Domains (`POST https://api.vercel.com/v5/domains/buy`) is simplest if Vercel is already set up from Layer 6.
-2. Point DNS at Vercel, deploy a one-page site with name, photo, bio, booking link, and contact.
+2. Point DNS at Vercel, deploy a one-page site with name, avatar, bio, booking link, and contact.
 3. Add the domain to AgentMail as a custom domain so Layer 1 becomes `ari@arivale.com` instead of `@agentmail.to`.
 4. Store under `domain` with registrar, name, and DNS provider.
 
@@ -426,7 +426,7 @@ For an agent that will sign contracts, hold a bank account, or invoice under a c
 1. Identity: name and persona (Layer 0).
 2. Email: AgentMail inbox (Layer 1).
 3. Phone: AgentPhone sign-up and verify (Layer 2).
-4. Face and voice (Layers 7 and 8), so every account created next has the same photo.
+4. Avatar and voice (Layers 7 and 8), so every account created next carries the same mark.
 5. GitHub, then Vercel and Supabase via GitHub sign-in (Layer 6).
 6. Keys and 2FA store (Layer 13), memory (Layer 11).
 7. Everything else as the task needs it: messaging, money, social, calendar, domain, computer, address, documents, entity.
