@@ -320,7 +320,8 @@ function drawOrb(tm) {
 }
 
 /* ---------- render ---------- */
-function status(L, i) { const all = L.get(i) || []; const have = all.filter(f => f[1]); return have.length === 0 ? "" : have.length >= all.length ? "on" : "partial"; }
+const real = v => v !== null && v !== undefined && v !== "" && v !== "not_provisioned";
+function status(L, i) { const all = L.get(i) || []; const have = all.filter(f => real(f[1])); return have.length === 0 ? "" : have.length >= all.length ? "on" : "partial"; }
 function render() {
   const i = ID;
   if (document.activeElement !== $("#name")) $("#name").value = i.name || "";
@@ -333,7 +334,7 @@ function render() {
   $("#facts").innerHTML = facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span class="v" title="${esc(v)}">${esc(v)}</span><button class="sm ghost" onclick="copy(${JSON.stringify(v)})">copy</button></div>`).join("") || `<div class="empty">Nothing provisioned yet. Facts appear here as layers come online.</div>`;
 
   $("#groups").innerHTML = GROUPS.map(([name, ns], gi) => `<section class="group reveal" style="animation-delay:${.12 + gi * .06}s"><h2>${name}<small>${ns.length} layers</small></h2><div class="rows">` +
-    ns.map(n => { const L = LAYERS.find(x => x.n === n); const all = L.get(i) || [], have = all.filter(f => f[1]); const en = g(i, `layers.${n}.enabled`) !== false; const st = status(L, i);
+    ns.map(n => { const L = LAYERS.find(x => x.n === n); const all = L.get(i) || [], have = all.filter(f => real(f[1])); const en = g(i, `layers.${n}.enabled`) !== false; const st = status(L, i);
       return `<div class="row ${en ? "" : "off"}" onclick="toggleDetail(${n}, event)">
         <span class="n">${String(n).padStart(2, "0")}</span>
         <span class="t"><span class="pip ${st}"></span>${L.t}</span>

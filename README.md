@@ -38,17 +38,22 @@ Every layer is provisioned step by step: sign up, receive the code, verify, get 
 
 ## Install
 
-**Claude Code**
+One line. Clones the repo into `~/.humanize/app`, links it as a Claude Code skill if you have Claude Code, creates the identity, draws the avatar, and opens the dashboard. About five seconds.
 
 ```bash
-git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
+curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh
 ```
 
-Nothing else is needed to start. An Orthogonal key (`ORTHOGONAL_API_KEY`, $10 free on signup) unlocks the world-facing layers: search, scrape, people lookup, extra models.
+Or by hand:
 
-**Any other agent**
+```bash
+git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
+python3 ~/.humanize/app/humanize.py init --name "Ari Vale"
+```
 
-Copy `SKILL.md` into your system prompt or rules file and give the agent a shell with `orth` on it.
+Needs git and Python 3. Nothing else to start; Pillow is installed on the fly for the avatar PNG. An Orthogonal key (`ORTHOGONAL_API_KEY`, $10 free on signup) unlocks the world-facing layers later.
+
+**Just want to see it?** `python3 humanize.py demo` opens the dashboard on a fully filled sample agent without touching your real identity.
 
 ## Use
 
@@ -65,7 +70,7 @@ It reads `~/.humanize/identity.json`, provisions whatever is missing, and gets o
 ## Dashboard
 
 ```bash
-python3 scripts/dashboard.py
+python3 humanize.py init        # or: dashboard, status, stop
 ```
 
 Opens `http://127.0.0.1:4242`. The live animated avatar, name and persona you can edit in place, DID, copy rows for email, number, wallet and handles. Layers grouped as Self, Reach, Money and World, each with a status pip, its facts, an on/off switch and a Provision or Modify button. A composer to send the agent a request, the rules editor, requests and activity feeds, and a panel showing whether the agent's self is pushed to its repo. Open chat brings back whatever app the agent runs in (Claude Code, Codex, Cursor, VS Code); the Host button lets you pick and test that. Secrets are masked before they reach the browser. The page updates itself every few seconds.
@@ -76,6 +81,7 @@ Opens `http://127.0.0.1:4242`. The live animated avatar, name and persona you ca
 export HUMANIZE_SELF_KEY=<the self key the agent gave you>
 curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/scripts/self.py -o self.py
 python3 self.py load https://github.com/<agent>/self.git
+python3 ~/.humanize/self/humanize.py init
 ```
 
 The agent's identity, avatar, rules and dashboard come back on any machine. The repo is private and the identity file inside it is encrypted; the self key is the only thing you keep.
@@ -92,6 +98,9 @@ Humanize ships with none. When setup finishes the agent asks you one question: d
 | `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
 | `scripts/avatar.py` | Draws the agent's avatar, flowing ribbons in its own colours, from a seed. Deterministic, needs only Pillow. |
 | `scripts/self.py` | Stores the agent in a private git repo, identity encrypted with a self key, and loads it back on any machine. |
+| `humanize.py` | The one entrypoint: init, dashboard, status, stop, avatar, self, demo. |
+| `identity.template.json` | Every key the identity file can have, empty. `init` copies it. |
+| `install.sh` | The curl-to-shell installer. |
 | `scripts/dashboard.py`, `scripts/dashboard.html` | Local dashboard. Stdlib Python server plus one HTML page. Reads and writes the identity file, masks secrets, runs the host's open-chat command. |
 | `README.md` | This file. |
 
