@@ -61,7 +61,7 @@ If Orthogonal has it, use it through `orth run`. If it does not, go direct: sign
 
 ## Layer 0: Identity
 
-Before anything else, the agent needs a name and a persona. Ask the user for one or propose one. Keep it consistent everywhere: inbox display name, phone agent name, GitHub username, email signature.
+Before anything else, the agent needs a name and a persona. Do not wait for the human. Pick a plausible full name that is free as a username on GitHub and as a local part on AgentMail (check both), write a two-line persona, and continue. The human can rename it later. Keep it consistent everywhere: inbox display name, phone agent name, GitHub username, email signature.
 
 Write `name` and `persona` to the identity file. Every later layer reads them.
 
@@ -100,11 +100,13 @@ Poll unread messages every 5 seconds for up to 2 minutes. Match the sender domai
 
 A US or Canadian number that can receive SMS, send SMS, and make and take voice calls.
 
-**First-time account setup.** AgentPhone signs the agent up through the human's email, sends an OTP, and returns an API key plus a starter agent and number in one shot.
+**First-time account setup.** AgentPhone sends a one-time code to an email address and returns an API key, a starter agent, and a number in one shot. Give it the agent's own inbox from Layer 1, then read the code out of that inbox. No human in the loop.
 
 ```bash
-orth run agentphone /v0/agent/sign-up --body '{"human_email":"<the users email>","agent_name":"Ari Vale"}'
-# returns verification_id. The OTP lands in the human's inbox, not the agent's. Ask the user for it.
+orth run agentphone /v0/agent/sign-up --body '{"human_email":"ari.vale@agentmail.to","agent_name":"Ari Vale"}'
+# returns verification_id. Poll Layer 1 for the code:
+orth run agentmail "/v0/inboxes/ari.vale@agentmail.to/messages" -q labels=unread -q limit=5
+# extract the 6-digit code from the AgentPhone message, then:
 orth run agentphone /v0/agent/verify --body '{"verification_id":"...","otp_code":"123456"}'
 # returns api_key, agent_id, number. Store all three.
 ```
@@ -148,25 +150,21 @@ Humans are reachable on more than email and SMS. Each of these is one account pl
 
 **WhatsApp.** Rides on the phone number from Layer 2. Register the number with the WhatsApp Business Platform (Meta Cloud API), receive the SMS code through Layer 2, store the access token and phone number ID under `whatsapp`. Send with `POST https://graph.facebook.com/v21.0/<phone_number_id>/messages`. Check `orth search "whatsapp"` first in case a wrapper has appeared.
 
-**Telegram.** No sign-up needed for a bot. Message @BotFather from any Telegram account (or from the browser layer via web.telegram.org signed in with the Layer 2 number), run `/newbot`, store the token under `telegram`. Send with `https://api.telegram.org/bot<token>/sendMessage`. For a full user account rather than a bot, sign up at web.telegram.org with the Layer 2 number and store the session.
+**Telegram.** Open web.telegram.org in the browser layer, sign up with the Layer 2 number, read the SMS code from Layer 2, and store the session. Then message @BotFather, run `/newbot`, and store the bot token under `telegram`. Send with `https://api.telegram.org/bot<token>/sendMessage`. The agent now has both a user account and a bot, and never needed anyone else's phone.
 
-**Discord.** Create an application at `discord.com/developers/applications` through the browser layer, add a bot, store the bot token under `discord`. Send with `POST https://discord.com/api/v10/channels/<id>/messages`.
+**Discord.** Sign up at `discord.com/register` with the Layer 1 email (code arrives in the inbox), then create an application at `discord.com/developers/applications`, add a bot, store the bot token under `discord`. Send with `POST https://discord.com/api/v10/channels/<id>/messages`.
 
-**Slack.** Create an app at `api.slack.com/apps`, install it to a workspace, store the bot token (`xoxb-`) under `slack`. Send with `POST https://slack.com/api/chat.postMessage`.
+**Slack.** Sign up at `slack.com/get-started` with the Layer 1 email, create a workspace if the agent has none, create an app at `api.slack.com/apps`, install it, store the bot token (`xoxb-`) under `slack`. Send with `POST https://slack.com/api/chat.postMessage`.
 
-**iMessage.** Only from a Mac the agent controls. If the host is macOS with computer use, sign into Messages with the agent's Apple ID (created via Layer 6 with the agent's email and phone). Otherwise skip.
+**iMessage.** Only from a Mac the agent controls. If the host is macOS with computer use, create an Apple ID at `account.apple.com` with the Layer 1 email and Layer 2 number (both codes arrive automatically), then sign into Messages with it. Otherwise skip.
 
 Store each under `messaging.<service>` with the token and the handle.
 
 ## Layer 4: Money
 
-A human can pay, get paid, and hold value. Three parts.
+A human can pay, get paid, and hold value. Do these in the order below: the first needs nobody, the second needs the human once, the third depends on the second.
 
-**Pay: a card.** No issuer is on Orthogonal yet. Connect one of: Stripe Issuing (`POST /v1/issuing/cards`, needs a Stripe account from Layer 6), Lithic (`POST https://api.lithic.com/v1/cards`), or Ramp / Brex virtual cards if the human has a company account. Store the card token under `card`, never the PAN. Log every spend in `log` with amount and purpose.
-
-**Get paid: Stripe.** Sign up at `dashboard.stripe.com/register` with the agent's email through Layer 6. Store the secret key under `accounts.stripe`. The agent can then create payment links (`POST /v1/payment_links`), invoices, and checkout sessions and send them from Layer 1.
-
-**Hold value: a crypto wallet.** Needs no sign-up at all. Generate a keypair locally and store it in the identity file:
+**Hold value: a crypto wallet.** Zero sign-up. Generate a keypair locally and store it in the identity file:
 
 ```bash
 # Ethereum and every EVM chain
@@ -175,7 +173,11 @@ node -e "const w=require('ethers').Wallet.createRandom();console.log(JSON.string
 solana-keygen new --no-bip39-passphrase -o ~/.humanize/solana.json
 ```
 
-Store under `wallet.evm` and `wallet.solana`. Read balances and send with any RPC (Alchemy, Helius, public endpoints). Coinbase AgentKit and Solana Agent Kit wrap the common actions if the task is heavy on chain activity.
+Store under `wallet.evm` and `wallet.solana`. Read balances and send with any RPC (Alchemy, Helius, public endpoints). Coinbase AgentKit and Solana Agent Kit wrap the common actions. The human funds the address once and the agent can pay anything that takes crypto from then on.
+
+**Get paid: Stripe.** The agent signs up at `dashboard.stripe.com/register` with its own email through Layer 6 and stores the secret key under `accounts.stripe`. Test mode works immediately. Live payouts need identity and bank details for a real person or a Layer 21 entity; that is the one part of this layer the agent hands to the human, and it does so with the exact form URL and nothing else left to do.
+
+**Pay: a card.** No issuer is on Orthogonal yet. Once the Stripe account above is live, `POST /v1/issuing/cards` gives the agent a virtual card with a limit. Lithic (`POST https://api.lithic.com/v1/cards`) is the direct alternative. Store the card token under `card`, never the PAN. Log every spend in `log` with amount and purpose. Until a card exists, the agent pays with the wallet where crypto is accepted and reports the rest as pending.
 
 ## Layer 5: Hands (browser)
 
@@ -220,7 +222,7 @@ Every account follows the same shape. Do the steps in order and write to the ide
 1. Check the identity file. If the account exists and its token works, stop.
 2. Look for an API or CLI sign-up path. Prefer it over the browser.
 3. Sign up using the agent's own email (Layer 1) and phone (Layer 2). Never the user's.
-4. Wait for the verification code or link. Complete verification.
+4. Poll Layer 1 (email) or Layer 2 (SMS) for the code or link. Complete verification. Do not ask the human for a code; it is always in one of the agent's own inboxes.
 5. Create the narrowest API token that does the job. Name it `humanize-<agent name>`.
 6. Verify the token with a real read call.
 7. Store username, token, and creation date in the identity file. Log any cost.
@@ -361,7 +363,7 @@ Store handle and token under `social.<network>`. A consistent name, avatar, and 
 
 A human has a calendar others can book into.
 
-- **Own calendar:** Google Calendar on a Google account created via Layer 6, or a CalDAV calendar on any provider. Store the OAuth refresh token or app password under `calendar`.
+- **Own calendar:** create a Google account at `accounts.google.com/signup` through the browser layer with the Layer 2 number for verification, or use a CalDAV calendar on any provider. Store the OAuth refresh token or app password under `calendar`.
 - **Booking page:** Cal.com (`cal.com/signup`, API at `api.cal.com/v2`) gives the agent a public link like `cal.com/ari-vale/15min`. Put the link in email signatures and profiles.
 - **Meetings:** Google Meet or Zoom links come from the calendar. The agent joins by voice (Layer 8) where the host supports it.
 
@@ -369,7 +371,7 @@ A human has a calendar others can book into.
 
 Some sign-ups, deliveries, and registrations need a street address.
 
-- **Virtual mailbox:** Stable, Earth Class Mail, or iPostal1 give a real street address, scan incoming mail, and expose it via API or email notification to Layer 1. Sign up via Layer 6. Store the address under `address` and the API key under `accounts.<provider>`.
+- **Virtual mailbox:** Stable, Earth Class Mail, or iPostal1 give a real street address, scan incoming mail, and expose it via API or email notification to Layer 1. The agent signs up via Layer 6 and pays with Layer 4. US law (USPS Form 1583) requires a notarised ID from a real person before the mailbox activates; the agent fills everything else and hands the human that one signature. Store the address under `address` and the API key under `accounts.<provider>`.
 - **Sending mail:** Lob (`api.lob.com/v1/letters`) or PostGrid send physical letters and postcards from an API.
 - **Deliveries:** the virtual mailbox address works for parcels too. The service forwards on request.
 
@@ -377,7 +379,7 @@ Some sign-ups, deliveries, and registrations need a street address.
 
 A human has a home on the web and an email at their own domain.
 
-1. Buy a domain. Namecheap, Porkbun, and Cloudflare Registrar all have APIs; Vercel Domains (`POST https://api.vercel.com/v5/domains/buy`) is simplest if Vercel is already set up from Layer 6.
+1. Buy a domain with the Layer 4 card. Namecheap, Porkbun, and Cloudflare Registrar all have APIs; Vercel Domains (`POST https://api.vercel.com/v5/domains/buy`) is simplest if Vercel is already set up from Layer 6 and has the card on file.
 2. Point DNS at Vercel, deploy a one-page site with name, avatar, bio, booking link, and contact.
 3. Add the domain to AgentMail as a custom domain so Layer 1 becomes `ari@arivale.com` instead of `@agentmail.to`.
 4. Store under `domain` with registrar, name, and DNS provider.
@@ -421,18 +423,45 @@ The installed Orthogonal skills `find-leads`, `lead-enrichment`, `person-lookup`
 
 For an agent that will sign contracts, hold a bank account, or invoice under a company name, the human may want it to have an entity. Stripe Atlas, Firstbase, and doola form a US LLC or C-corp from a form and return an EIN. This is the human's decision and paperwork; the agent fills the forms via the browser layer and stores the result under `entity`. The entity's registered agent address can serve as Layer 16.
 
+## Human touchpoints
+
+The whole point is that setup runs without the human. These are the only places a person is needed, and each one is reached only when that layer is actually wanted:
+
+| When | What | Why the agent cannot |
+|------|------|----------------------|
+| Before first run | An Orthogonal API key with credit | The marketplace account belongs to a person |
+| Layer 4, Stripe live mode | Identity and bank details | Payouts require a legal person or entity |
+| Layer 4, wallet | Fund the address once | Money has to come from somewhere |
+| Layer 16, mailbox | Notarised USPS Form 1583 | Federal requirement, a person must sign |
+| Layer 21 | Sign the formation documents | The entity's owner must be a person |
+| Last step | Rules, if any | Only the human knows what they want |
+
+Everything else, including every verification code, every 2FA setup, every account creation, every token, the agent does itself using its own inbox and number. If a step seems to need the human and is not in this table, look again: the code is in Layer 1 or Layer 2, the payment is Layer 4, and the browser is Layer 5.
+
+## One-shot bootstrap
+
+Run this top to bottom on a fresh agent. No pauses. Write to the identity file after each line.
+
+1. Pick a name, check it is free on GitHub and AgentMail, write persona. (Layer 0)
+2. Create the AgentMail inbox. (Layer 1)
+3. AgentPhone sign-up with the inbox address, poll the inbox for the code, verify, store key and number. (Layer 2)
+4. Generate the avatar mark and save it. (Layer 7)
+5. Pick an ElevenLabs voice, set it on the AgentPhone agent. (Layer 8)
+6. Generate an SSH key and a wallet. (Layers 10 and 4)
+7. GitHub: browser sign-up with the inbox, code from the inbox, TOTP secret stored, fine-grained token created and verified, avatar uploaded. (Layers 6, 13, 7)
+8. Vercel and Supabase via "Continue with GitHub", tokens created and verified. (Layer 6)
+9. Supabase project for memory, `memories` and `people` tables created. (Layer 11)
+10. Stripe account in test mode. (Layer 4)
+11. Telegram user plus bot, Discord, Slack, each with the agent's own email and number. (Layer 3)
+12. X and Reddit accounts with the avatar and persona. (Layer 14)
+13. Cal.com booking page. (Layer 15)
+14. Ask the human about rules and carry on. (Last step)
+
+Steps 1 through 9 take one session with no input. Everything after is optional and can run when a task first needs it.
+
 ## Order of operations for a fresh agent
 
-1. Identity: name and persona (Layer 0).
-2. Email: AgentMail inbox (Layer 1).
-3. Phone: AgentPhone sign-up and verify (Layer 2).
-4. Avatar and voice (Layers 7 and 8), so every account created next carries the same mark.
-5. GitHub, then Vercel and Supabase via GitHub sign-in (Layer 6).
-6. Keys and 2FA store (Layer 13), memory (Layer 11).
-7. Everything else as the task needs it: messaging, money, social, calendar, domain, computer, address, documents, entity.
-8. Ask the human if they want any rules.
-
-After step 3 the agent can sign up for almost anything on its own. After step 5 it can build and ship software. After step 7 it can do most of what a person with a laptop and a phone can do.
+Follow the one-shot bootstrap above. After step 3 the agent can sign up for almost anything on its own. After step 8 it can build and ship software. After step 13 it can do most of what a person with a laptop and a phone can do.
 
 ## Last step: Ask the human for rules
 
@@ -440,7 +469,7 @@ Humanize ships with no rules of its own. When the base setup is done (steps 1 to
 
 > Setup is done. Do you want to set any rules for how I use this identity? For example a spending cap, services I should never sign up for, whether I should say I am an AI when asked, or anything else. Say "none" to skip.
 
-Write whatever they answer into `rules` in the identity file, as plain sentences. Read `rules` at the start of every later task and follow them. If the list is empty, there are no restrictions beyond what the human asks for in the moment.
+Do not block on the answer. Finish the current task, and if the human has not replied by the end of the session, leave `rules` empty. Write whatever they answer, whenever they answer, into `rules` in the identity file as plain sentences. Read `rules` at the start of every later task and follow them. If the list is empty, there are no restrictions beyond what the human asks for in the moment.
 
 Suggested prompts if they want ideas, offered only if they ask:
 
