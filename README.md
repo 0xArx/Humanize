@@ -6,33 +6,33 @@ Agents hit walls for boring reasons. They cannot receive a verification email. T
 
 ## What the agent gets
 
-| Layer | What | Where it comes from |
-|-------|------|---------------------|
-| 0 | Name and persona | you |
-| 1 | Email inbox, send and receive | AgentMail via Orthogonal, $2/mo |
-| 2 | Phone number, SMS, voice calls | AgentPhone via Orthogonal, $3/mo per number |
-| 3 | WhatsApp, Telegram, Discord, Slack, iMessage | Meta Cloud API, BotFather, Discord and Slack apps |
-| 4 | Money: a card, Stripe to get paid, a crypto wallet | Stripe Issuing or Lithic, Stripe, local keygen |
-| 5 | A browser it can drive | your host's own browser tools, Notte via Orthogonal as fallback |
-| 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol |
-| 7 | An avatar: abstract squiggle mark, not a face | Nano Banana via Orthogonal |
-| 8 | A voice, the same on calls and voice notes | ElevenLabs via Orthogonal |
-| 9 | Eyes on the world: search, scrape, weather, local businesses | Exa, Tavily, Perplexity, Olostep, Openmart, Precip via Orthogonal |
-| 10 | Its own computer | Smol Machines via Orthogonal, or Fly.io, Hetzner, E2B, AWS |
-| 11 | Memory: notes, people, files | Supabase pgvector, private GitHub repo |
-| 12 | Brain: extra models | OpenRouter via Orthogonal, or direct keys |
-| 13 | Passwords, TOTP 2FA, recovery codes | identity file or Bitwarden, oathtool |
-| 14 | Social profiles: X, LinkedIn, Reddit, more | sign-up protocol |
-| 15 | Calendar and a booking page | Google Calendar, Cal.com |
-| 16 | A street address and physical mail | Stable, Earth Class Mail, iPostal1, Lob |
-| 17 | A domain, a website, email at its own domain | Vercel Domains, Namecheap, AgentMail custom domain |
-| 18 | E-signatures and documents | Dropbox Sign, DocuSign |
-| 19 | Verifying other people | Didit via Orthogonal |
-| 20 | Contacts and people lookup | Hunter, People Data Labs, Apollo, Edges via Orthogonal |
-| 21 | A legal entity | Stripe Atlas, Firstbase, doola |
-| last | Rules, only if you want them | you |
+| Layer | What | Where it comes from | Human needed |
+|-------|------|---------------------|--------------|
+| 0 | Name, persona, DID | picked by the agent, DID from Mailgent | no |
+| 1 | Email inbox | Mailgent (one empty POST), AgentMail (free, 3 inboxes) | no |
+| 2 | Phone, SMS, voice | AgentPhone ($5 credit), Dial (200+ countries, iMessage) | no |
+| 3 | WhatsApp, Telegram, Discord, Slack, iMessage | Meta Cloud API, BotFather, Discord and Slack apps, Dial | no |
+| 4 | Money: x402 USDC wallet, more wallets, Stripe, a card | Mailgent wallet, local keygen, Stripe, AgentWallet or AgentCard | fund once; card needs one ID check |
+| 5 | A browser it can drive | the host's own browser tools, Notte via Orthogonal as fallback | no |
+| 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol with its own inbox and number | no |
+| 7 | An avatar: abstract squiggle mark, not a face | `scripts/avatar.py`, local | no |
+| 8 | A voice | AgentPhone voice library, ElevenLabs via Orthogonal | no |
+| 9 | Eyes on the world: search, scrape, weather, local businesses | Exa, Tavily, Perplexity, Olostep, Openmart, Precip via Orthogonal | Orthogonal key |
+| 10 | Its own computer | Smol Machines via Orthogonal, or E2B, Fly.io, Hetzner via GitHub login | no |
+| 11 | Memory: notes, people, files | Supabase pgvector, private GitHub repo | no |
+| 12 | Brain: extra models | OpenRouter via Orthogonal, or direct keys | Orthogonal key |
+| 13 | Passwords, TOTP 2FA, recovery codes | Mailgent vault, which is also the authenticator | no |
+| 14 | Social profiles: X, LinkedIn, Reddit, more | sign-up protocol | no |
+| 15 | Calendar and a booking page | Mailgent calendar, Cal.com | no |
+| 16 | A street address and physical mail | Stable, Earth Class Mail, iPostal1, Lob | notarised form |
+| 17 | A domain, a website, email at its own domain | Vercel Domains, Namecheap, AgentMail custom domain | no |
+| 18 | E-signatures and documents | Dropbox Sign, DocuSign | no |
+| 19 | Verifying other people | Didit via Orthogonal | Orthogonal key |
+| 20 | Contacts and people lookup | Hunter, People Data Labs, Apollo, Edges via Orthogonal | Orthogonal key |
+| 21 | A legal entity | Stripe Atlas, Firstbase, doola | sign formation docs |
+| last | Rules, only if you want them | you | if you want |
 
-Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours, so it never has to stop and ask you for a code. The first nine layers run in one session with no input from you. The only things it cannot do alone are the ones the law ties to a real person: bank details for payouts, a notarised form for a mailbox, signing to form a company.
+Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours, so it never has to stop and ask you for a code. The base identity (inbox, phone, avatar, voice, vault, calendar, GitHub, Vercel, Supabase) runs in one session with no input from you and no API key to start: the agent signs itself up for each. The only things it cannot do alone are the ones the law ties to a real person: an identity check for a card, bank details for payouts, a notarised form for a mailbox, signing to form a company.
 
 ## Install
 
@@ -42,7 +42,7 @@ Every layer is provisioned step by step: sign up, receive the code, verify, get 
 git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
 ```
 
-You also need the Orthogonal CLI with `ORTHOGONAL_API_KEY` set. Every provider in this skill is reached through it.
+Nothing else is needed to start. An Orthogonal key (`ORTHOGONAL_API_KEY`, $10 free on signup) unlocks the world-facing layers: search, scrape, people lookup, extra models.
 
 **Any other agent**
 
@@ -70,11 +70,12 @@ Humanize ships with none. When setup finishes the agent asks you one question: d
 |------|---------|
 | `SKILL.md` | The skill. Layers 0 to 21, commands, costs, identity file schema, and the rules step. |
 | `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
+| `scripts/avatar.py` | Draws the agent's squiggle avatar from its name. Deterministic, needs only Pillow. |
 | `README.md` | This file. |
 
 ## Roadmap
 
-Every layer that currently points at a vendor with no Orthogonal wrapper (card issuer, WhatsApp, virtual mailbox, e-sign) gets swapped to `orth run` the day one appears. Beyond that: a driver's licence equivalent for age-gated services, ride and delivery apps, banking. Each one gets added the same way: find the provider, run the commands, write the recipe. Pull requests welcome. Read `AGENTS.md` first.
+Every layer that still needs a person (card, mailbox, entity) gets swapped to an agent-native provider the day one exists. Beyond that: a driver's licence equivalent for age-gated services, ride and delivery apps, banking. Each one gets added the same way: find the provider, run the commands, write the recipe. Pull requests welcome. Read `AGENTS.md` first.
 
 ## License
 
