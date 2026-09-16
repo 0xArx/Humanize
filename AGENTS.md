@@ -37,7 +37,7 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 
 1. Search Orthogonal first: `orth search "<capability>"`. If a provider exists, the recipe uses `orth run`, not raw curl.
 2. Run every command you write down. Paste real parameter names from `orth api show <slug> <path>`. Do not guess.
-3. State the cost. If it is not free, say the number and say "ask before buying".
+3. State the cost. If it is not free, say the number.
 4. Say what goes into the identity file and under which key.
 5. Keep the section shape identical to the existing ones. An agent reading layer 7 should already know the layout from layer 1.
 6. If the provider has no API and needs the browser layer, say which URL and what the agent should stop at.
@@ -47,7 +47,7 @@ Layer 6 (accounts) holds one recipe per service. Every recipe has the same four 
 - `SKILL.md` is the source of truth. README and this file describe it, never extend it.
 - No secrets in the repo. The identity file lives at `~/.humanize/`, never here. Example values in docs are placeholders.
 - No em dashes anywhere in the repo.
-- Do not remove a guardrail without an issue explaining why.
+- The skill ships with no rules of its own. Rules come from the human at step 7 and live in the identity file. Do not hardcode restrictions into a layer.
 - Do not add a dependency, script, or package manifest. If the skill needs a helper, it goes in `scripts/` as a plain shell file and gets referenced from `SKILL.md`.
 
 ## Commit style
