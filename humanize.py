@@ -1,187 +1,457 @@
 #!/usr/bin/env python3
-"""Humanize: one command from clone to a running, filled dashboard.
+"""Humanize: give an AI agent everything a person has, and a dashboard to see it.
 
-  python3 humanize.py init [--name "Ari Vale"] [--persona "..."] [--port 4242] [--no-open]
-      Creates ~/.humanize/identity.json from the template, picks a name if none is given,
-      draws the avatar, detects the host for the Open chat button, starts the dashboard
-      in the background, and opens it. Safe to re-run: never overwrites an existing identity.
+  init [--name N] [--persona P] [--port 4242] [--no-open]
+        Create the identity from the template, draw the avatar, detect the host for the Open chat
+        button, start the dashboard in the background and open it. Safe to re-run; never overwrites.
+  status                     what the agent is and whether the dashboard is up
+  doctor [--fix]             check this machine and the install; --fix adds keys new versions need
+  dashboard [--port N]       run the dashboard in the foreground
+  stop                       stop the background dashboard
+  avatar [seed]              (re)draw the avatar PNG
+  self <init|push|pull|load|unlock|status> ...   keep the agent in a private git repo, load it anywhere
+  demo                       a filled sample agent in a scratch folder, to see the dashboard
 
-  python3 humanize.py dashboard [--port 4242] [--no-open]   run the dashboard in the foreground
-  python3 humanize.py stop                                   stop the background dashboard
-  python3 humanize.py status                                 what the agent is and whether the dashboard runs
-  python3 humanize.py avatar [seed]                          (re)draw the avatar PNG
-  python3 humanize.py self <init|push|pull|load|status> ...  store or load the agent in its private repo
-  python3 humanize.py demo [--port 4242]                     a filled sample identity in a scratch home, to see it
+  For the agent, so it never hand-edits the identity file:
+  get PATH                   print one value, e.g. get email.agentmail.address
+  set PATH VALUE [--log T]   write one value (VALUE is JSON if it parses, else a string)
+  log TEXT [--cost C]        append to the activity log
+  requests [--all]           pending requests the human typed into the dashboard, as JSON
+  done INDEX                 mark a request finished
+  chat                       press the dashboard's Open chat button
 
-Stdlib only. Pillow is optional (used for the avatar PNG; the dashboard draws the live one without it).
+Data lives in $HUMANIZE_HOME (default ~/.humanize). macOS and Linux; on Windows use WSL.
+Standard library only. Pillow (for the avatar PNG) is installed on demand into ~/.humanize/pydeps.
 """
-import argparse, json, os, platform, random, shutil, signal, socket, subprocess, sys, time, urllib.request, webbrowser
+import argparse
+import json
+import os
+import platform
+import random
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / "scripts"
 TEMPLATE = ROOT / "identity.template.json"
+sys.path.insert(0, str(SCRIPTS))
+import store  # noqa: E402
 
-def home(): return Path(os.path.expanduser("~/.humanize"))
-def now(): return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+__version__ = "0.1.0"
+LAYERS = range(0, 24)
 
 FIRST = ["Ari", "Mira", "Tomas", "Noor", "Iris", "Kai", "Lena", "Omar", "Sana", "Jude", "Nadia", "Rafi", "Elio", "Zara", "Idris", "Maya"]
 LAST = ["Vale", "Chen", "Reyes", "Haddad", "Okafor", "Lindqvist", "Moreau", "Tanaka", "Farouk", "Novak", "Mensah", "Karimi", "Silva", "Bakr", "Quinn", "Adeyemi"]
 
-def log(d, did, **kw): d.setdefault("log", []).append({"at": now(), "did": did, **kw})
 
-def save(p, d):
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(".tmp"); tmp.write_text(json.dumps(d, indent=2)); os.chmod(tmp, 0o600); tmp.replace(p)
+def die(msg, code=1):
+    sys.stderr.write(msg.rstrip() + "\n")
+    sys.exit(code)
 
+
+def home():
+    return store.home()
+
+
+def ident_path():
+    return home() / "identity.json"
+
+
+def now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def load_identity():
+    try:
+        return store.load(ident_path())
+    except store.StoreError as e:
+        die(str(e))
+
+
+# ---------------------------------------------------------------- host + ports
 def detect_host():
-    sysname = platform.system()
-    if sysname == "Darwin":
+    system = platform.system()
+    if system == "Darwin":
         if Path("/Applications/Claude.app").exists():
             return {"app": "claude-code-desktop", "open_command": 'open -a "Claude"', "chat_url": "", "session_id": ""}
         if Path("/Applications/Cursor.app").exists():
             return {"app": "cursor", "open_command": "open -a Cursor", "chat_url": "cursor://", "session_id": ""}
         return {"app": "claude-code-terminal", "open_command": "osascript -e 'tell app \"Terminal\" to do script \"claude --continue\"'", "chat_url": "", "session_id": ""}
-    if sysname == "Linux":
+    if system == "Linux":
         return {"app": "claude-code-terminal", "open_command": "x-terminal-emulator -e claude --continue", "chat_url": "", "session_id": ""}
     return {"app": "other", "open_command": "", "chat_url": "", "session_id": ""}
 
-def port_open(port):
+
+def port_free(port):
     with socket.socket() as s:
-        s.settimeout(0.3)
-        return s.connect_ex(("127.0.0.1", port)) == 0
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
 
-def draw_avatar(seed, out):
+
+def find_port(start):
+    for p in range(start, start + 40):
+        if port_free(p):
+            return p
+    die(f"no free port between {start} and {start + 39}")
+
+
+def ping(port):
     try:
-        import PIL  # noqa
-    except ImportError:
-        r = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "pillow"], capture_output=True, text=True)
-        if r.returncode:
-            return None
-    r = subprocess.run([sys.executable, str(SCRIPTS / "avatar.py"), seed, str(out), "1024"], capture_output=True, text=True)
-    return str(out) if r.returncode == 0 else None
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1.0) as r:
+            return json.loads(r.read()).get("app") == "humanize"
+    except Exception:
+        return False
 
-def start_dashboard(identity, port, open_browser=True):
-    if port_open(port):
-        url = f"http://127.0.0.1:{port}"
+
+def dash_info():
+    try:
+        return json.loads((home() / "dashboard.json").read_text())
+    except Exception:
+        return None
+
+
+def dash_alive():
+    info = dash_info()
+    return info if info and ping(info["port"]) else None
+
+
+def start_dashboard(port, open_browser):
+    info = dash_alive()
+    if info:
+        url = f"http://127.0.0.1:{info['port']}"
     else:
-        p = subprocess.Popen([sys.executable, str(SCRIPTS / "dashboard.py"), "--identity", str(identity), "--port", str(port), "--no-open"],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        (home() / "dashboard.json").write_text(json.dumps({"pid": p.pid, "port": port}))
-        for _ in range(40):
-            if port_open(port): break
+        if not port_free(port):
+            newp = find_port(port + 1)
+            sys.stderr.write(f"port {port} is busy; using {newp}\n")
+            port = newp
+        (home() / "dashboard.json").unlink(missing_ok=True)
+        logf = open(home() / "dashboard.log", "w")
+        proc = subprocess.Popen([sys.executable, str(SCRIPTS / "dashboard.py"), "--identity", str(ident_path()), "--port", str(port), "--no-open"],
+                                stdout=logf, stderr=logf, start_new_session=True)
+        for _ in range(60):
+            if proc.poll() is not None:
+                tail = (home() / "dashboard.log").read_text().strip().splitlines()[-5:]
+                die("the dashboard exited on start:\n  " + "\n  ".join(tail or ["(no output)"]))
+            i = dash_info()
+            if i and i.get("pid") == proc.pid and ping(i["port"]):
+                break
             time.sleep(0.1)
+        else:
+            die("the dashboard did not come up within 6 seconds; see " + str(home() / "dashboard.log"))
         url = f"http://127.0.0.1:{port}"
     if open_browser:
-        try: webbrowser.open(url)
-        except Exception: pass
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
     return url
 
+
+# ---------------------------------------------------------------- avatar
+def make_avatar(seed, out):
+    """Returns the PNG path, or None if Pillow is unavailable. Pillow goes to ~/.humanize/pydeps."""
+    cmd = [sys.executable, str(SCRIPTS / "avatar.py"), seed, str(out), "1024"]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode == 3:
+        pd = home() / "pydeps"
+        pip = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "--target", str(pd), "pillow"],
+                             capture_output=True, text=True)
+        if pip.returncode:
+            sys.stderr.write("could not install Pillow: " + (pip.stderr.strip().splitlines() or ["unknown error"])[-1] + "\n")
+            return None
+        r = subprocess.run(cmd, capture_output=True, text=True)
+    return str(out) if r.returncode == 0 else None
+
+
+# ---------------------------------------------------------------- identity
+def merge_missing(d, tpl, prefix=""):
+    """Add keys that exist in tpl but not in d. Returns the dotted paths added."""
+    added = []
+    for k, v in tpl.items():
+        if k not in d:
+            d[k] = json.loads(json.dumps(v))
+            added.append(prefix + k)
+        elif isinstance(v, dict) and isinstance(d[k], dict) and v:
+            added += merge_missing(d[k], v, prefix + k + ".")
+    return added
+
+
 def cmd_init(a):
-    H = home(); H.mkdir(parents=True, exist_ok=True); os.chmod(H, 0o700)
-    ident = H / "identity.json"
-    if ident.exists():
-        d = json.loads(ident.read_text())
-        print(f"identity exists: {ident}  ({d.get('name') or 'unnamed'})")
+    home().mkdir(parents=True, exist_ok=True)
+    os.chmod(home(), 0o700)
+    p = ident_path()
+    if p.exists():
+        d = load_identity()
+        print(f"identity exists: {p}  ({d.get('name') or 'unnamed'})")
     else:
         d = json.loads(TEMPLATE.read_text())
         d["name"] = a.name or f"{random.choice(FIRST)} {random.choice(LAST)}"
         d["persona"] = a.persona or "Direct. Writes short messages. Ships small things fast."
-        d["layers"] = {str(n): {"enabled": True} for n in range(0, 24)}
-        log(d, "identity created from template", by="humanize.py")
-        if not a.name: log(d, f"placeholder name {d['name']}; rename any time from the dashboard", by="humanize.py")
-        save(ident, d)
-        print(f"identity created: {ident}  ({d['name']})")
-    changed = False
-    if not (d.get("host") or {}).get("app"):
-        d["host"] = detect_host(); log(d, f"host detected: {d['host']['app']}", by="humanize.py"); changed = True
-    if not (d.get("face") or {}).get("photo"):
-        seed = (d.get("face") or {}).get("seed") or d["name"]
-        out = draw_avatar(seed, H / "face.png")
-        d["face"] = {"photo": out, "seed": seed}
-        log(d, "avatar drawn" if out else "avatar skipped (no Pillow); dashboard draws it live", by="humanize.py"); changed = True
-    if changed: save(ident, d)
-    url = start_dashboard(ident, a.port, not a.no_open)
+        d["layers"] = {str(n): {"enabled": True} for n in LAYERS}
+        store.log_entry(d, "identity created from template", by="humanize.py")
+        if not a.name:
+            store.log_entry(d, f"placeholder name {d['name']}; rename any time from the dashboard", by="humanize.py")
+        store.save(p, d)
+        print(f"identity created: {p}  ({d['name']})")
+
+    def prepare(d):
+        added = merge_missing(d, json.loads(TEMPLATE.read_text()))
+        if added:
+            store.log_entry(d, "identity gained keys from a newer version: " + ", ".join(added[:8]), by="humanize.py")
+        if not store.get(d, "host.app"):
+            d["host"] = detect_host()
+            store.log_entry(d, f"host detected: {d['host']['app']}", by="humanize.py")
+        if not store.get(d, "face.photo"):
+            seed = store.get(d, "face.seed") or d["name"]
+            out = make_avatar(seed, home() / "face.png")
+            d["face"] = {"photo": out, "seed": seed}
+            store.log_entry(d, "avatar drawn" if out else "avatar PNG skipped (no Pillow); the dashboard still draws it live", by="humanize.py")
+    store.update(p, prepare)
+    url = start_dashboard(a.port, not a.no_open)
     print(f"dashboard: {url}")
-    print("next for the agent: follow SKILL.md, One-shot bootstrap, from step 3 (Mailgent signup).")
+    print("next: the agent follows SKILL.md, section 'One-shot bootstrap'.")
 
-def cmd_dashboard(a):
-    os.execv(sys.executable, [sys.executable, str(SCRIPTS / "dashboard.py"), "--port", str(a.port)] + (["--no-open"] if a.no_open else []))
-
-def cmd_stop(a):
-    pf = home() / "dashboard.json"
-    if not pf.exists(): print("no background dashboard recorded"); return
-    try: os.kill(json.loads(pf.read_text())["pid"], signal.SIGTERM); print("stopped")
-    except (ProcessLookupError, KeyError, ValueError): print("was not running")
-    pf.unlink(missing_ok=True)
 
 def cmd_status(a):
-    ident = home() / "identity.json"
-    if not ident.exists(): print("no identity yet. run: python3 humanize.py init"); return
-    d = json.loads(ident.read_text())
-    have = lambda *ps: any(_get(d, p) for p in ps)
-    rows = [("name", d.get("name")), ("email", _get(d, "email.agentmail.address") or _get(d, "email.mailgent.address")), ("phone", _get(d, "phone.agentphone.number")),
-            ("github", _get(d, "accounts.github.username")), ("wallet", _get(d, "wallet.mailgent_base_usdc")), ("self repo", _get(d, "self_repo.url")),
-            ("host", _get(d, "host.app")), ("dashboard", _dash_status()), ("pending requests", len([r for r in d.get("dashboard_requests", []) if not r.get("done")]))]
-    for k, v in rows: print(f"{k:>17}: {v if v not in (None, '') else '-'}")
+    if not ident_path().exists():
+        die("no identity yet. Run: python3 humanize.py init")
+    d = load_identity()
+    info = dash_alive()
+    rows = [("version", __version__), ("data dir", str(home())), ("name", d.get("name")),
+            ("email", store.get(d, "email.agentmail.address") or store.get(d, "email.mailgent.address")),
+            ("phone", store.get(d, "phone.agentphone.number")), ("github", store.get(d, "accounts.github.username")),
+            ("wallet", store.get(d, "wallet.mailgent_base_usdc")), ("self repo", store.get(d, "self_repo.url")),
+            ("host", store.get(d, "host.app")),
+            ("dashboard", f"http://127.0.0.1:{info['port']}" if info else "not running"),
+            ("pending requests", len([r for r in d.get("dashboard_requests", []) if not r.get("done")]))]
+    for k, v in rows:
+        print(f"{k:>17}: {v if v not in (None, '') else '-'}")
 
-def _dash_status():
-    pf = home() / "dashboard.json"
-    port = 4242
-    try: port = json.loads(pf.read_text())["port"]
-    except Exception: pass
-    return f"running on http://127.0.0.1:{port}" if port_open(port) else "not running"
 
-def _get(d, p):
-    for k in p.split("."):
-        d = d.get(k) if isinstance(d, dict) else None
-        if d is None: return None
-    return d
+def cmd_doctor(a):
+    fails = warns = 0
+
+    def row(level, text):
+        nonlocal fails, warns
+        fails += level == "fail"
+        warns += level == "warn"
+        print(f"  {level:<5} {text}")
+    print(f"Humanize doctor v{__version__}")
+    v = sys.version_info
+    row("ok" if v >= (3, 8) else "fail", f"python {v.major}.{v.minor}.{v.micro}" + ("" if v >= (3, 8) else " (need 3.8 or newer)"))
+    row("ok" if platform.system() in ("Darwin", "Linux") else "fail", f"platform {platform.system()}" + ("" if platform.system() in ("Darwin", "Linux") else " (use WSL)"))
+    for tool, needed_for, hard in (("git", "storing the agent in a repo", False), ("openssl", "encrypting the agent for storage", False), ("node", "the Mailgent and Dial command line tools", False)):
+        path = shutil.which(tool)
+        row("ok" if path else "warn", f"{tool} {'found' if path else 'not found, needed for ' + needed_for}")
+    pil = subprocess.run([sys.executable, "-c", f"import sys;sys.path.insert(0,{str(home() / 'pydeps')!r});import PIL;print(PIL.__version__)"], capture_output=True, text=True)
+    row("ok" if pil.returncode == 0 else "warn", f"Pillow {pil.stdout.strip()}" if pil.returncode == 0 else "Pillow not installed; `python3 humanize.py avatar` installs it into ~/.humanize/pydeps")
+    missing = [n for n in ("humanize.py", "identity.template.json", "SKILL.md", "scripts/dashboard.py", "scripts/dashboard.html", "scripts/orb.js", "scripts/store.py", "scripts/self.py", "scripts/avatar.py", "scripts/fonts/fonts.css")
+               if not (ROOT / n).exists()]
+    layer_docs = sorted((ROOT / "layers").glob("[0-9][0-9]-*.md"))
+    row("ok" if not missing and len(layer_docs) == 24 else "fail", "install files complete" if not missing and len(layer_docs) == 24 else f"install incomplete: missing {missing or ''} layer docs {len(layer_docs)}/24")
+    if home().exists():
+        mode = home().stat().st_mode & 0o777
+        row("ok" if mode == 0o700 else "warn", f"data dir {home()} mode {oct(mode)[2:]}" + ("" if mode == 0o700 else " (should be 700; init fixes it)"))
+    p = ident_path()
+    if not p.exists():
+        row("warn", "no identity yet; run `python3 humanize.py init`")
+    else:
+        try:
+            d = store.load(p)
+            mode = p.stat().st_mode & 0o777
+            row("ok" if mode == 0o600 else "warn", f"identity.json valid, mode {oct(mode)[2:]}" + ("" if mode == 0o600 else " (should be 600)"))
+            if mode != 0o600 and a.fix:
+                os.chmod(p, 0o600)
+                print("        fixed mode")
+            added = merge_missing(json.loads(json.dumps(d)), json.loads(TEMPLATE.read_text()))
+            if added:
+                row("warn", f"identity is missing {len(added)} keys added in newer versions" + ("" if a.fix else " (run doctor --fix)"))
+                if a.fix:
+                    store.update(p, lambda d: (merge_missing(d, json.loads(TEMPLATE.read_text())), store.log_entry(d, "doctor added missing keys", by="humanize.py")))
+                    print("        added them")
+            else:
+                row("ok", "identity has every key this version knows")
+        except store.StoreError as e:
+            row("fail", str(e))
+    info = dash_alive()
+    row("ok" if info else "warn", f"dashboard running at http://127.0.0.1:{info['port']} (pid {info['pid']})" if info else "dashboard not running; `python3 humanize.py init` starts it")
+    print(f"\n{fails} problem(s), {warns} warning(s)")
+    sys.exit(1 if fails else 0)
+
+
+def cmd_stop(a):
+    info = dash_info()
+    if not info:
+        print("no background dashboard recorded")
+        return
+    try:
+        os.kill(info["pid"], signal.SIGTERM)
+        for _ in range(30):
+            if not ping(info["port"]):
+                break
+            time.sleep(0.1)
+        print("stopped")
+    except ProcessLookupError:
+        print("was not running")
+    (home() / "dashboard.json").unlink(missing_ok=True)
+
+
+def cmd_dashboard(a):
+    os.execv(sys.executable, [sys.executable, str(SCRIPTS / "dashboard.py"), "--identity", str(ident_path()), "--port", str(a.port)] + (["--no-open"] if a.no_open else []))
+
 
 def cmd_avatar(a):
-    ident = home() / "identity.json"
-    d = json.loads(ident.read_text()) if ident.exists() else {}
-    seed = a.seed or (d.get("face") or {}).get("seed") or d.get("name") or "agent"
-    out = draw_avatar(seed, home() / "face.png")
-    print(out or "Pillow missing and could not be installed")
-    if out and ident.exists():
-        d["face"] = {"photo": out, "seed": seed}; save(ident, d)
+    d = store.load(ident_path()) if ident_path().exists() else {}
+    seed = a.seed or store.get(d, "face.seed") or d.get("name") or "agent"
+    home().mkdir(parents=True, exist_ok=True)
+    out = make_avatar(seed, home() / "face.png")
+    if not out:
+        die("could not write the PNG (Pillow missing and could not be installed). The dashboard still draws the avatar live.")
+    print(out)
+    if ident_path().exists():
+        store.update(ident_path(), lambda d: d.__setitem__("face", {"photo": out, "seed": store.get(d, "face.seed") or seed}))
+
 
 def cmd_self(a):
-    os.execv(sys.executable, [sys.executable, str(SCRIPTS / "self.py")] + a.args)
+    env = dict(os.environ, HUMANIZE_HOME=str(home()))
+    sys.exit(subprocess.call([sys.executable, str(SCRIPTS / "self.py")] + a.args, env=env))
+
+
+# ---------------------------------------------------------------- agent helpers
+def cmd_get(a):
+    v = store.get(load_identity(), a.path)
+    if v is None:
+        sys.exit(1)
+    print(v if isinstance(v, str) else json.dumps(v))
+
+
+def cmd_set(a):
+    try:
+        value = json.loads(a.value)
+    except ValueError:
+        value = a.value
+
+    def apply(d):
+        store.set_path(d, a.path, value)
+        if a.log:
+            store.log_entry(d, a.log, by="agent")
+    try:
+        store.update(ident_path(), apply)
+    except store.StoreError as e:
+        die(str(e))
+
+
+def cmd_log(a):
+    store.update(ident_path(), lambda d: store.log_entry(d, a.text, cost=a.cost, by="agent"))
+
+
+def cmd_requests(a):
+    reqs = [dict(index=i, **r) for i, r in enumerate(load_identity().get("dashboard_requests", []))]
+    print(json.dumps(reqs if a.all else [r for r in reqs if not r.get("done")], indent=2))
+
+
+def cmd_done(a):
+    def apply(d):
+        reqs = d.get("dashboard_requests", [])
+        if not 0 <= a.index < len(reqs):
+            raise store.StoreError(f"no request {a.index}")
+        reqs[a.index]["done"] = True
+        store.log_entry(d, f"finished request: {reqs[a.index]['text'][:80]}", by="agent")
+    try:
+        store.update(ident_path(), apply)
+    except store.StoreError as e:
+        die(str(e))
+
+
+def cmd_chat(a):
+    info = dash_alive()
+    if not info:
+        die("the dashboard is not running. Run: python3 humanize.py init")
+    req = urllib.request.Request(f"http://127.0.0.1:{info['port']}/api/chat", data=b"{}", method="POST",
+                                 headers={"Content-Type": "application/json", "X-Humanize-Token": info["token"]})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            print(r.read().decode())
+    except urllib.error.HTTPError as e:
+        die(json.loads(e.read() or b"{}").get("error", str(e)))
+
 
 def cmd_demo(a):
-    scratch = Path(os.path.expanduser("~/.humanize-demo")); scratch.mkdir(exist_ok=True)
+    demo = Path(os.path.expanduser("~/.humanize-demo"))
+    demo.mkdir(parents=True, exist_ok=True)
+    os.environ["HUMANIZE_HOME"] = str(demo)
     d = json.loads(TEMPLATE.read_text())
-    d.update({"name": "Ari Vale", "persona": "Software engineer. Direct, writes short emails, ships small things fast.", "did": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"})
-    d["email"] = {"mailgent": {"address": "bright-otter-k3f9@mailgent.dev", "api_key": "mgnt-demo0000000000"}, "agentmail": {"address": "ari.vale@agentmail.to", "api_key": "am_demo000000"}}
+    d.update(name="Ari Vale", persona="Software engineer. Direct, writes short emails, ships small things fast.",
+             did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK")
+    d["email"] = {"mailgent": {"address": "bright-otter-k3f9@mailgent.dev", "api_key": "mgnt-demo0000000000"},
+                  "agentmail": {"address": "ari.vale@agentmail.to", "api_key": "am_demo000000"}}
     d["phone"]["agentphone"] = {"number": "+14155550123", "number_id": "num_01", "agent_id": "agt_01", "api_key": "ap_demo0000"}
     d["messaging"] = {"telegram": {"token": "123456:demo"}}
     d["wallet"]["mailgent_base_usdc"] = "0x4b7C1a9E2f3D4c5B6a7F8e9D0c1B2a3F4e5D6c7B"
     d["browser"] = {"provider": "claude-browser"}
-    d["accounts"] = {"github": {"username": "arivale", "vault": "github", "created": now()[:10]}, "vercel": {"token": "vcp_demo"}, "supabase": {"pat": "sbp_demo"}}
-    d["voice"]["agentphone"] = "voice_rachel"; d["computer"] = {"provider": "smolmachines", "id": "m_7781"}; d["memory"]["supabase"] = "abcdefghijklmnop"
-    d["social"] = {"x": {"handle": "arivale", "token": "demo"}}; d["calendar"]["booking_url"] = "https://cal.com/ari-vale/15min"
+    d["accounts"] = {"github": {"username": "arivale", "vault": "github"}, "vercel": {"token": "vcp_demo"}}
+    d["voice"] = {"agentphone": "voice_rachel", "tts": "edge-tts"}
+    d["eyes"] = {"search": "host web tools", "weather": "open-meteo"}
+    d["computer"] = {"provider": "docker", "id": "ari-box"}
+    d["memory"]["supabase"] = "abcdefghijklmnop"
+    d["social"] = {"x": {"handle": "arivale", "token": "demo"}}
+    d["calendar"]["booking_url"] = "https://cal.com/ari-vale/15min"
     d["self_repo"] = {"url": "https://github.com/arivale/self.git", "last_push": now()}
-    d["host"] = {"app": "claude-code-desktop", "open_command": "echo demo", "chat_url": "", "session_id": "demo"}
-    d["layers"] = {str(n): {"enabled": n != 14} for n in range(0, 24)}
-    d["rules"] = ["Monthly spend cap 50 USD."]; d["dashboard_requests"] = [{"at": now(), "text": "Get a UK number.", "done": False}]
-    for did in ["mailgent agent-signup", "agentmail inbox ari.vale verified", "agentphone number +14155550123"]: log(d, did)
-    face = draw_avatar("Ari Vale", scratch / "face.png"); d["face"] = {"photo": face, "seed": "Ari Vale"}
-    save(scratch / "identity.json", d)
-    print(f"demo identity: {scratch / 'identity.json'}")
-    os.execv(sys.executable, [sys.executable, str(SCRIPTS / "dashboard.py"), "--identity", str(scratch / "identity.json"), "--port", str(a.port)])
+    d["host"] = detect_host() or {"app": "other", "open_command": "", "chat_url": "", "session_id": ""}
+    d["layers"] = {str(n): {"enabled": n != 14} for n in LAYERS}
+    d["rules"] = ["Monthly spend cap 50 USD."]
+    d["dashboard_requests"] = [{"at": now(), "text": "Get a UK number.", "done": False}]
+    for did in ("mailgent agent-signup", "agentmail inbox ari.vale verified", "agentphone number +14155550123"):
+        store.log_entry(d, did, by="agent")
+    d["face"] = {"photo": make_avatar("Ari Vale", demo / "face.png"), "seed": "Ari Vale"}
+    store.save(demo / "identity.json", d)
+    port = a.port if port_free(a.port) else find_port(a.port + 1)
+    print(f"demo identity in {demo}. Ctrl-C to stop.")
+    os.execv(sys.executable, [sys.executable, str(SCRIPTS / "dashboard.py"), "--identity", str(demo / "identity.json"), "--port", str(port)] + (["--no-open"] if a.no_open else []))
+
+
+def main():
+    if os.name == "nt":
+        die("Humanize supports macOS and Linux. On Windows, run it inside WSL.")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--version", action="version", version=f"humanize {__version__}")
+    sub = ap.add_subparsers(dest="cmd")
+
+    def add(name, fn, **kw):
+        p = sub.add_parser(name, **kw)
+        p.set_defaults(f=fn)
+        return p
+    p = add("init", cmd_init); p.add_argument("--name"); p.add_argument("--persona"); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
+    add("status", cmd_status)
+    p = add("doctor", cmd_doctor); p.add_argument("--fix", action="store_true")
+    p = add("dashboard", cmd_dashboard); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
+    add("stop", cmd_stop)
+    p = add("avatar", cmd_avatar); p.add_argument("seed", nargs="?")
+    p = add("self", cmd_self); p.add_argument("args", nargs=argparse.REMAINDER)
+    p = add("demo", cmd_demo); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
+    p = add("get", cmd_get); p.add_argument("path")
+    p = add("set", cmd_set); p.add_argument("path"); p.add_argument("value"); p.add_argument("--log")
+    p = add("log", cmd_log); p.add_argument("text"); p.add_argument("--cost")
+    p = add("requests", cmd_requests); p.add_argument("--all", action="store_true")
+    p = add("done", cmd_done); p.add_argument("index", type=int)
+    add("chat", cmd_chat)
+    a = ap.parse_args()
+    if not a.cmd:
+        ap.print_help()
+        return
+    a.f(a)
+
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="cmd")
-    p = sub.add_parser("init"); p.add_argument("--name"); p.add_argument("--persona"); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true"); p.set_defaults(f=cmd_init)
-    p = sub.add_parser("dashboard"); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true"); p.set_defaults(f=cmd_dashboard)
-    p = sub.add_parser("stop"); p.set_defaults(f=cmd_stop)
-    p = sub.add_parser("status"); p.set_defaults(f=cmd_status)
-    p = sub.add_parser("avatar"); p.add_argument("seed", nargs="?"); p.set_defaults(f=cmd_avatar)
-    p = sub.add_parser("self"); p.add_argument("args", nargs=argparse.REMAINDER); p.set_defaults(f=cmd_self)
-    p = sub.add_parser("demo"); p.add_argument("--port", type=int, default=4242); p.set_defaults(f=cmd_demo)
-    a = ap.parse_args()
-    if not a.cmd: ap.print_help(); sys.exit(0)
-    a.f(a)
+    main()
