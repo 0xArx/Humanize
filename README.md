@@ -136,10 +136,21 @@ identity.template.json    every key the identity file can hold
 install.sh                clone or update, link as a skill, run init
 scripts/                  dashboard.py, dashboard.html, orb.js, store.py, self.py, memory.py, avatar.py, fonts/
 tests/                    the automated tests
+site/                     the website: static files, deployed on Vercel
 docs/                     architecture, providers, troubleshooting, screenshots
 AGENTS.md                 for AI agents working in this repo
 SECURITY.md  CHANGELOG.md  CONTRIBUTING.md  LICENSE
 ```
+
+## The website
+
+A static site in `site/` explains what Humanize does, how to use it, and all 24 layers, with the live avatar generator and light and dark modes. It loads nothing from other websites and is served under a strict content security policy. It is deployed on Vercel as the `humanize` project:
+
+```bash
+cd site && npx vercel deploy --prod --yes
+```
+
+The tests keep it honest: its layer names, who-is-needed labels, groups, version, test and CI counts are checked against the repo.
 
 ## Contributing and license
 

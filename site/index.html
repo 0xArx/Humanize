@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humanize</title>
+<meta name="description" content="Give an AI agent everything a person has: an inbox, a phone number, a wallet, accounts, a memory, a face and a voice. One command gets you a dashboard to watch it happen and steer it.">
+<meta name="theme-color" content="#f5f2ea">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/early.js"></script>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip" href="#what">Skip to content</a>
+
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Humanize, back to top"><canvas class="brand-orb" id="brandOrb" width="56" height="56" aria-hidden="true"></canvas><span>Humanize</span></a>
+  <nav aria-label="Sections">
+    <a href="#what" data-sec="what">What</a>
+    <a href="#how" data-sec="how">How</a>
+    <a href="#layers" data-sec="layers">Layers</a>
+    <a href="#dashboard" data-sec="dashboard">Dashboard</a>
+    <a href="#security" data-sec="security">Security</a>
+    <a href="#use" data-sec="use">Use it</a>
+  </nav>
+  <button class="theme" id="theme" type="button" aria-label="Switch between light and dark">Dark</button>
+</header>
+
+<main id="top">
+
+<!-- ============ HERO ============ -->
+<section class="hero" aria-labelledby="h1">
+  <div class="hero-copy">
+    <p class="eyebrow reveal">A skill for AI agents</p>
+    <h1 id="h1" class="reveal">Give an agent everything a <em>person</em> has.</h1>
+    <p class="lede reveal">An inbox. A phone number. A wallet. Accounts, a memory, a face and a voice. Humanize is a skill any agent can follow and a small set of local tools, so you can watch your agent become a person in the ways that matter, and stay in charge of it.</p>
+    <div class="cta reveal">
+      <a class="btn primary" href="#how">See how it works</a>
+      <a class="btn" href="#layers">The 24 layers</a>
+    </div>
+    <ul class="proof reveal" aria-label="At a glance">
+      <li><b>24</b><span>layers, one guide each</span></li>
+      <li><b>0</b><span>people needed for the first ten steps</span></li>
+      <li><b>104</b><span>automated tests, green on Ubuntu and macOS</span></li>
+    </ul>
+  </div>
+
+  <div class="hero-stage" aria-label="A sample agent being set up">
+    <div class="orb-wrap">
+      <div class="halo" aria-hidden="true"></div>
+      <canvas id="heroOrb" width="640" height="640" role="img" aria-label="The agent's avatar, drawn live from its name"></canvas>
+    </div>
+    <div class="passport" id="passport">
+      <div class="pp-head"><span class="pp-name" id="ppName">Ari Vale</span><span class="pp-tag">sample agent</span></div>
+      <p class="pp-persona">Direct. Writes short emails. Ships small things fast.</p>
+      <dl class="pp-rows">
+        <div><dt>email</dt><dd id="ppEmail"></dd></div>
+        <div><dt>phone</dt><dd id="ppPhone"></dd></div>
+        <div><dt>wallet</dt><dd id="ppWallet"></dd></div>
+        <div><dt>github</dt><dd id="ppGit"></dd></div>
+      </dl>
+      <div class="pp-bar" aria-hidden="true"><i id="ppFill"></i></div>
+      <p class="pp-count"><b id="ppNum">0</b> of 24 layers set up</p>
+    </div>
+  </div>
+
+  <div class="seeds reveal" role="group" aria-label="Pick a name to see its avatar">
+    <p class="seeds-h">Every agent gets a mark of its own. Pick a name.</p>
+    <div class="seed-row" id="seedRow"></div>
+  </div>
+</section>
+
+<!-- ============ THE PROBLEM ============ -->
+<section class="band" aria-labelledby="h-problem">
+  <div class="wrap">
+    <p class="kicker reveal">The problem</p>
+    <h2 id="h-problem" class="reveal">Agents fail at boring things.</h2>
+    <ol class="fails">
+      <li class="reveal"><span>01</span> It cannot receive a verification email.</li>
+      <li class="reveal"><span>02</span> It cannot pass an SMS code.</li>
+      <li class="reveal"><span>03</span> It cannot pay for the thing it needs.</li>
+      <li class="reveal"><span>04</span> It cannot remember yesterday.</li>
+      <li class="reveal"><span>05</span> It cannot survive the laptop dying.</li>
+    </ol>
+    <p class="after reveal">Humanize closes each of those gaps, one layer at a time, and keeps the result in a single file so the agent always knows what it owns.</p>
+  </div>
+</section>
+
+<!-- ============ WHAT IT IS ============ -->
+<section class="sec" id="what" aria-labelledby="h-what">
+  <div class="wrap">
+    <p class="kicker reveal">What it is</p>
+    <h2 id="h-what" class="reveal">A skill, some local tools, and a window.</h2>
+    <div class="trio">
+      <article class="card reveal">
+        <h3>The skill</h3>
+        <p>A short router, <code>SKILL.md</code>, and 24 layer guides. Any agent that can read markdown and run a shell can follow it: Claude Code, Codex, Cursor and others. It tells the agent how to work each turn, which provider to prefer, and exactly which steps need a person.</p>
+      </article>
+      <article class="card reveal">
+        <h3>The tools</h3>
+        <p>One command, <code>humanize.py</code>. It creates the identity, draws the avatar, starts the dashboard, and gives the agent safe helpers to read and write what it owns, remember things, and back itself up. Standard-library Python, nothing to install.</p>
+      </article>
+      <article class="card reveal">
+        <h3>The dashboard</h3>
+        <p>A full-page app on your own machine. See every layer, switch any of them off, edit the name, persona and rules, ask for changes, and jump back into the chat. It makes no third-party requests and hides secrets from the browser.</p>
+      </article>
+    </div>
+
+    <div class="idfile reveal">
+      <div class="idfile-text">
+        <h3>One file holds the whole agent.</h3>
+        <p>Everything the agent owns lives in <code>~/.humanize/identity.json</code>, readable only by you. It records what exists, so nothing is bought twice, and it holds pointers instead of secrets. The agent never edits it by hand: it uses helpers that lock the file, so the dashboard and the agent can write at the same time without losing each other's changes.</p>
+      </div>
+      <figure class="code" aria-label="A sample identity file">
+        <pre><code>{
+  "name": "Ari Vale",
+  "did": "did:key:z6Mkha...",
+  "email": {
+    "agentmail": { "address": "ari.vale@agentmail.to",
+                   "api_key": "secret:email.agentmail.api_key" }
+  },
+  "phone": { "agentphone": { "number": "+14155550123" } },
+  "layers": { "14": { "enabled": false } },
+  "rules": ["Monthly spend cap 50 USD."]
+}</code></pre>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="sec tint" id="how" aria-labelledby="h-how">
+  <div class="wrap">
+    <p class="kicker reveal">How it works</p>
+    <h2 id="h-how" class="reveal">Four steps. The agent does most of them.</h2>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step-n">1</span>
+        <h3>Install</h3>
+        <p>Clone it and run one command. It creates the identity, draws the avatar, works out which app your agent chats in, and opens the dashboard. A few seconds.</p>
+        <figure class="code small"><pre><code>python3 humanize.py init --name "Ari Vale"</code></pre></figure>
+      </li>
+      <li class="step reveal">
+        <span class="step-n">2</span>
+        <h3>The agent sets itself up</h3>
+        <p>You tell it to read <code>SKILL.md</code>. With no one's help and no cost, it gets everything below, using its own inbox for every verification code.</p>
+        <ul class="chips">
+          <li>inbox</li><li>phone number</li><li>wallet</li><li>DID</li><li>vault</li><li>calendar</li><li>avatar</li><li>voice</li><li>memory</li><li>dashboard</li>
+        </ul>
+      </li>
+      <li class="step reveal">
+        <span class="step-n">3</span>
+        <h3>One handoff</h3>
+        <p>Some things truly need a person: a CAPTCHA, a card's identity check, a notarised form. The agent prepares everything and sends you a single message, not a drip of questions.</p>
+        <blockquote class="msg">Setup so far is done. To finish I need about five minutes from you: a private repo to keep me in, and a token for it.</blockquote>
+      </li>
+      <li class="step reveal">
+        <span class="step-n">4</span>
+        <h3>Steer, and survive</h3>
+        <p>From then on you watch and steer from the dashboard. The agent backs itself up, encrypted, to a private repo, so a new machine and the self key bring it back exactly as it was.</p>
+        <figure class="code small"><pre><code>python3 humanize.py self push</code></pre></figure>
+      </li>
+    </ol>
+
+    <div class="prompt reveal">
+      <p class="prompt-h">What you say to your agent</p>
+      <figure class="code copyable">
+        <pre id="promptText"><code>Set yourself up with Humanize. Read ~/.humanize/app/SKILL.md and follow the one-shot bootstrap.</code></pre>
+        <button class="copy" type="button" data-target="promptText">Copy</button>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LAYERS ============ -->
+<section class="sec" id="layers" aria-labelledby="h-layers">
+  <div class="wrap">
+    <p class="kicker reveal">The layers</p>
+    <h2 id="h-layers" class="reveal">Twenty-four things a person has.</h2>
+    <p class="sub reveal">Each layer is one thing a person has and an agent normally lacks, with its own short guide. Half of them need nobody at all. The other half say exactly what only a person can do, and nothing is presented as automatic when it is not.</p>
+
+    <div class="filters reveal" role="group" aria-label="Filter the layers">
+      <div class="seg" id="segGroup" role="group" aria-label="Group">
+        <button type="button" data-group="all" aria-pressed="true">All</button>
+        <button type="button" data-group="Self" aria-pressed="false">Self</button>
+        <button type="button" data-group="Reach" aria-pressed="false">Reach</button>
+        <button type="button" data-group="Money" aria-pressed="false">Money</button>
+        <button type="button" data-group="World" aria-pressed="false">World</button>
+      </div>
+      <div class="seg" id="segNeed" role="group" aria-label="Who is needed">
+        <button type="button" data-need="all" aria-pressed="true">Anyone</button>
+        <button type="button" data-need="nobody" aria-pressed="false">Needs nobody</button>
+        <button type="button" data-need="person" aria-pressed="false">Needs you</button>
+      </div>
+      <p class="count" id="layerCount" aria-live="polite">Showing 24 of 24</p>
+    </div>
+
+    <div class="lgrid" id="lgrid">
+        <article class="lcard reveal" data-n="0" data-group="Self" data-need="nobody">
+          <header><span class="num">00</span><h3>Identity</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">A name, a persona and a DID of its own.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld0">How it works</button>
+          <div class="detail" id="ld0" hidden>
+            <p>The agent picks a plausible name, checks the handle is free, and gets a cryptographic identity it can sign with. You can rename it from the dashboard at any time.</p>
+            <p class="tags"><span>Uses</span> Mailgent DID</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="1" data-group="Reach" data-need="nobody">
+          <header><span class="num">01</span><h3>Email</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">Inboxes it reads and sends from.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld1">How it works</button>
+          <div class="detail" id="ld1" hidden>
+            <p>One API call makes a Mailgent address with a vault, a calendar and a wallet. AgentMail adds a conventional address. Every verification code lands here, so the agent never asks you for one.</p>
+            <p class="tags"><span>Uses</span> Mailgent, AgentMail</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="2" data-group="Reach" data-need="nobody">
+          <header><span class="num">02</span><h3>Phone</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">A real number for SMS, calls and one-time codes.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld2">How it works</button>
+          <div class="detail" id="ld2" hidden>
+            <p>AgentPhone gives a US or Canadian number and a voice agent from a sign-up whose code arrives in the agent&#x27;s own inbox. Dial adds other countries and iMessage. A five dollar credit covers the first month.</p>
+            <p class="tags"><span>Uses</span> AgentPhone, Dial</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="3" data-group="Reach" data-need="person">
+          <header><span class="num">03</span><h3>Messaging</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">Slack, Telegram, Discord, WhatsApp, iMessage.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld3">How it works</button>
+          <div class="detail" id="ld3" hidden>
+            <p>Slack and iMessage the agent can do alone. Telegram may reject virtual numbers. Discord needs a CAPTCHA and WhatsApp needs a verified business, so those two are handoffs, and the guide says so plainly.</p>
+            <p class="tags"><span>Uses</span> Slack, Telegram, Dial</p>
+            <p class="need-note"><span>A person is needed for</span> Discord and WhatsApp, maybe Telegram</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="4" data-group="Money" data-need="person">
+          <header><span class="num">04</span><h3>Money</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">An x402 wallet, Stripe, a card.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld4">How it works</button>
+          <div class="detail" id="ld4" hidden>
+            <p>The Mailgent wallet pays any x402 service per request with no account at all. You fund it once, only when something paid is needed. A card needs one identity check, and Stripe payouts need bank details.</p>
+            <p class="tags"><span>Uses</span> x402, Stripe</p>
+            <p class="need-note"><span>A person is needed for</span> funding once, a card&#x27;s ID check</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="5" data-group="World" data-need="person">
+          <header><span class="num">05</span><h3>Browser</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">Hands, for services with no API.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld5">How it works</button>
+          <div class="detail" id="ld5" hidden>
+            <p>It uses the browser its host already gives it, or a local headless one. When a page shows a CAPTCHA it finishes everything else and sends you one message with what is left.</p>
+            <p class="tags"><span>Uses</span> Host browser, Playwright</p>
+            <p class="need-note"><span>A person is needed for</span> a CAPTCHA, when one appears</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="6" data-group="World" data-need="person">
+          <header><span class="num">06</span><h3>Accounts</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">GitHub, Vercel, Supabase and more.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld6">How it works</button>
+          <div class="detail" id="ld6" hidden>
+            <p>One protocol for every service: sign up with its own email and number, read the code, make the narrowest token, verify it. GitHub forbids automated sign-up, so a person creates that one account.</p>
+            <p class="tags"><span>Uses</span> GitHub, Vercel, Supabase</p>
+            <p class="need-note"><span>A person is needed for</span> the GitHub CAPTCHA, once</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="7" data-group="Self" data-need="nobody">
+          <header><span class="num">07</span><h3>Avatar</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">A mark that is unique to this agent.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld7">How it works</button>
+          <div class="detail" id="ld7" hidden>
+            <p>Flowing ribbons of light drawn from a seed. Every agent gets its own colours and curves, and the dashboard animates the same mark live. It never changes once accounts carry it.</p>
+            <p class="tags"><span>Uses</span> Local, no service</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="8" data-group="Self" data-need="nobody">
+          <header><span class="num">08</span><h3>Voice</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">One voice on calls and voice notes.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld8">How it works</button>
+          <div class="detail" id="ld8" hidden>
+            <p>A voice from the AgentPhone library for calls, and a matching local voice for audio files and voice notes, with no account.</p>
+            <p class="tags"><span>Uses</span> AgentPhone, edge-tts</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="9" data-group="World" data-need="person">
+          <header><span class="num">09</span><h3>Eyes</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">Search, page reading, weather, places.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld9">How it works</button>
+          <div class="detail" id="ld9" hidden>
+            <p>Free keyless tools first. When those are not enough: Apify, one token for thousands of scrapers, and the x402 Bazaar, a catalogue of over fifteen thousand pay-per-call APIs.</p>
+            <p class="tags"><span>Uses</span> Open-Meteo, Apify, x402 Bazaar</p>
+            <p class="need-note"><span>A person is needed for</span> funding, only for paid lookups</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="10" data-group="World" data-need="person">
+          <header><span class="num">10</span><h3>Computer</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">A machine of its own.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld10">How it works</button>
+          <div class="detail" id="ld10" hidden>
+            <p>A local container, a GitHub Codespace, or a cloud machine, plus its own SSH key. So long jobs and servers do not run on your laptop.</p>
+            <p class="tags"><span>Uses</span> Docker, Codespaces</p>
+            <p class="need-note"><span>A person is needed for</span> a card, only for a cloud machine</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="11" data-group="World" data-need="nobody">
+          <header><span class="num">11</span><h3>Memory</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">Searchable notes and people it has met.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld11">How it works</button>
+          <div class="detail" id="ld11" hidden>
+            <p>One local SQLite file with full-text search. No account and no server. It is backed up, encrypted, with the rest of the agent.</p>
+            <p class="tags"><span>Uses</span> Local SQLite</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="12" data-group="World" data-need="nobody">
+          <header><span class="num">12</span><h3>Brain</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">Other models it can call.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld12">How it works</button>
+          <div class="detail" id="ld12" hidden>
+            <p>A local model with Ollama first. Then OpenRouter, one key for hundreds of models, then Groq. For sub-agents and work that should not use the host&#x27;s context.</p>
+            <p class="tags"><span>Uses</span> Ollama, OpenRouter, Groq</p>
+            <p class="need-note"><span>A person is needed for</span> nothing locally</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="13" data-group="Self" data-need="nobody">
+          <header><span class="num">13</span><h3>Keys and 2FA</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">A vault and an authenticator.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld13">How it works</button>
+          <div class="detail" id="ld13" hidden>
+            <p>Passwords, 2FA secrets and tokens go in the Mailgent vault, which also produces one-time codes. The few keys the agent needs to reach it live in the macOS Keychain.</p>
+            <p class="tags"><span>Uses</span> Mailgent vault, Keychain</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="14" data-group="Reach" data-need="person">
+          <header><span class="num">14</span><h3>Social</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">X, LinkedIn, Reddit and more.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld14">How it works</button>
+          <div class="detail" id="ld14" hidden>
+            <p>The agent prepares everything and a person clicks through each network&#x27;s CAPTCHA. After that it posts and reads through the API.</p>
+            <p class="tags"><span>Uses</span> X, LinkedIn, Reddit</p>
+            <p class="need-note"><span>A person is needed for</span> a CAPTCHA per network</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="15" data-group="Reach" data-need="nobody">
+          <header><span class="num">15</span><h3>Calendar</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">A calendar and a booking page.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld15">How it works</button>
+          <div class="detail" id="ld15" hidden>
+            <p>The Mailgent calendar is included and has its own commands. Cal.com adds a public booking link for signatures and profiles.</p>
+            <p class="tags"><span>Uses</span> Mailgent, Cal.com</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="16" data-group="Reach" data-need="person">
+          <header><span class="num">16</span><h3>Address</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">A street address and physical mail.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld16">How it works</button>
+          <div class="detail" id="ld16" hidden>
+            <p>A virtual mailbox that scans mail into its inbox. United States rules require a notarised form from a real person before it activates.</p>
+            <p class="tags"><span>Uses</span> Stable, iPostal1, Lob</p>
+            <p class="need-note"><span>A person is needed for</span> a notarised form</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="17" data-group="Reach" data-need="person">
+          <header><span class="num">17</span><h3>Domain</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">A domain, a site and email on its own domain.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld17">How it works</button>
+          <div class="detail" id="ld17" hidden>
+            <p>Buy a domain with the agent&#x27;s card, deploy a one-page site, and put its email on it.</p>
+            <p class="tags"><span>Uses</span> Cloudflare, Vercel</p>
+            <p class="need-note"><span>A person is needed for</span> a card</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="18" data-group="World" data-need="person">
+          <header><span class="num">18</span><h3>Signatures</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">Documents it can fill and sign.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld18">How it works</button>
+          <div class="detail" id="ld18" hidden>
+            <p>Local PDF filling is free and needs no account. Legally binding e-signatures use Dropbox Sign or DocuSign.</p>
+            <p class="tags"><span>Uses</span> pypdf, Dropbox Sign</p>
+            <p class="need-note"><span>A person is needed for</span> maybe an identity check</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="19" data-group="World" data-need="nobody">
+          <header><span class="num">19</span><h3>Verify others</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">Check that someone else&#x27;s phone or email is real.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld19">How it works</button>
+          <div class="detail" id="ld19" hidden>
+            <p>AgentPhone&#x27;s verification endpoints cost five cents a successful check. For email it sends a code from its own inbox and compares.</p>
+            <p class="tags"><span>Uses</span> AgentPhone</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="20" data-group="World" data-need="nobody">
+          <header><span class="num">20</span><h3>Contacts</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">People it knows and can find.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld20">How it works</button>
+          <div class="detail" id="ld20" hidden>
+            <p>People live in local memory. To find someone: web search, GitHub&#x27;s API, Apify, or a pay-per-lookup people search on the x402 Bazaar. It starts with the free option.</p>
+            <p class="tags"><span>Uses</span> Apify, x402 Bazaar</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="21" data-group="Money" data-need="person">
+          <header><span class="num">21</span><h3>Entity</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">A company, if it ever needs one.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld21">How it works</button>
+          <div class="detail" id="ld21" hidden>
+            <p>Stripe Atlas, Firstbase or doola form a US company. The owner must be a person, so the agent fills the forms and stops at the signature.</p>
+            <p class="tags"><span>Uses</span> Stripe Atlas, doola</p>
+            <p class="need-note"><span>A person is needed for</span> a signature</p>
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="22" data-group="Self" data-need="nobody">
+          <header><span class="num">22</span><h3>Dashboard</h3><span class="badge ok">Needs nobody</span></header>
+          <p class="gist">This window, and the chat button.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld22">How it works</button>
+          <div class="detail" id="ld22" hidden>
+            <p>A full-page local app: every layer, switches, requests, activity, rules. It hides secrets before they reach the browser, and its Open chat button takes you back to the app your agent runs in.</p>
+            <p class="tags"><span>Uses</span> Local, no service</p>
+            
+          </div>
+        </article>
+        <article class="lcard reveal" data-n="23" data-group="Self" data-need="person">
+          <header><span class="num">23</span><h3>Self, stored</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">An encrypted backup, loadable anywhere.</p>
+          <button class="more" type="button" aria-expanded="false" aria-controls="ld23">How it works</button>
+          <div class="detail" id="ld23" hidden>
+            <p>Identity, secrets and memory are encrypted and pushed to a private git repo. A new machine needs only the repo and the self key to become the same agent.</p>
+            <p class="tags"><span>Uses</span> Private git, openssl</p>
+            <p class="need-note"><span>A person is needed for</span> a git remote and token; keeping the key</p>
+          </div>
+        </article>
+    </div>
+    <p class="empty" id="layerEmpty" hidden>No layers match that filter.</p>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="sec tint" id="dashboard" aria-labelledby="h-dash">
+  <div class="wrap">
+    <p class="kicker reveal">The dashboard</p>
+    <h2 id="h-dash" class="reveal">See it. Steer it. Switch any of it off.</h2>
+    <div class="browser reveal">
+      <div class="bar"><i></i><i></i><i></i><span>127.0.0.1:4242</span></div>
+      <img class="shot shot-light" src="/img/dashboard-light.webp" width="1440" height="900" alt="The Humanize dashboard in light mode: the agent's avatar and contact details on the left, an overview and a grid of layers in the middle, and requests, activity and rules on the right." loading="lazy">
+      <img class="shot shot-dark" src="/img/dashboard-dark.webp" width="1440" height="900" alt="The Humanize dashboard in dark mode." loading="lazy">
+    </div>
+    <ul class="feat">
+      <li class="reveal"><h3>The agent rail</h3><p>Its live avatar, name and persona, both editable in place. Copy buttons for its email, number, wallet and handles. The state of its encrypted backup.</p></li>
+      <li class="reveal"><h3>A grid you can steer</h3><p>Every layer is a card with its facts, an on and off switch, and a Provision or Modify button. Filter, search with <kbd>/</kbd>, and open a card for the full detail.</p></li>
+      <li class="reveal"><h3>Tell it something</h3><p>Type a request and the agent reads it on its next turn. Rename it, turn off a network, ask for a number. It also holds the rules you set and the full activity log.</p></li>
+      <li class="reveal"><h3>Back to the chat</h3><p>Open chat takes you back to whichever app your agent runs in: Claude Code, Codex, Cursor or VS Code. If the command fails it tells you why, instead of staying silent.</p></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ SECURITY ============ -->
+<section class="sec" id="security" aria-labelledby="h-sec">
+  <div class="wrap">
+    <p class="kicker reveal">Security</p>
+    <h2 id="h-sec" class="reveal">Secrets stay out of files. The dashboard does not trust anyone.</h2>
+    <div class="two">
+      <div class="reveal">
+        <h3 class="h3s">Where secrets live</h3>
+        <ol class="tiers">
+          <li><b>The Mailgent vault</b><span>Passwords, 2FA secrets, recovery codes and account tokens, encrypted at rest. It also produces one-time codes.</span></li>
+          <li><b>The macOS Keychain</b><span>The few keys the agent needs to reach the vault and its services, and the self key. On Linux, the system keyring.</span></li>
+          <li><b>The identity file</b><span>Pointers only, such as <code>secret:email.agentmail.api_key</code>. Safe to look at.</span></li>
+          <li><b>The encrypted backup</b><span>Identity, secrets and memory sealed with AES-256 and an HMAC, so a wrong key or a tampered file is refused.</span></li>
+        </ol>
+      </div>
+      <div class="reveal">
+        <h3 class="h3s">How the dashboard protects itself</h3>
+        <p class="why">Its Open chat button runs a command on your machine, so any web page you visit must not be able to press it.</p>
+        <ul class="checks">
+          <li>Listens on your own machine only</li>
+          <li>Answers only requests addressed to itself, which defeats DNS rebinding</li>
+          <li>Refuses anything that came from another website</li>
+          <li>Needs a per-run token on every action</li>
+          <li>Shows its page only to a browser holding your access key</li>
+          <li>Accepts JSON only, size-limited and type-checked</li>
+          <li>Runs under a strict content security policy with no third-party requests</li>
+          <li>Hides secrets before they reach the browser</li>
+        </ul>
+      </div>
+    </div>
+    <p class="honest reveal">The agent can see and use its own keys, because that is what they are for. What all this guards against is everything around it: other software, other accounts on the machine, and keys leaking into files, screenshots and repositories. The full threat model, with its limits, ships in the repository.</p>
+  </div>
+</section>
+
+<!-- ============ USE IT ============ -->
+<section class="sec tint" id="use" aria-labelledby="h-use">
+  <div class="wrap">
+    <p class="kicker reveal">Use it</p>
+    <h2 id="h-use" class="reveal">Works with the agent you already use.</h2>
+
+    <div class="tabs reveal" role="tablist" aria-label="Choose your agent">
+      <button role="tab" id="t-cc" aria-controls="p-cc" aria-selected="true" type="button">Claude Code</button>
+      <button role="tab" id="t-cx" aria-controls="p-cx" aria-selected="false" type="button">Codex, Cursor and others</button>
+      <button role="tab" id="t-any" aria-controls="p-any" aria-selected="false" type="button">Any chat model</button>
+    </div>
+    <div class="panel reveal" role="tabpanel" id="p-cc" aria-labelledby="t-cc">
+      <p>The installer links Humanize into Claude Code as a skill, so you can type <code>/humanize</code> or just ask.</p>
+      <figure class="code copyable"><pre id="c1"><code>git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
+ln -s ~/.humanize/app ~/.claude/skills/humanize
+python3 ~/.humanize/app/humanize.py init --name "Ari Vale"</code></pre><button class="copy" type="button" data-target="c1">Copy</button></figure>
+    </div>
+    <div class="panel reveal" role="tabpanel" id="p-cx" aria-labelledby="t-cx" hidden>
+      <p><code>SKILL.md</code> and <code>AGENTS.md</code> are plain markdown. Point the agent at the folder, or paste <code>SKILL.md</code> into its rules file, and give it a shell.</p>
+      <figure class="code copyable"><pre id="c2"><code>git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
+python3 ~/.humanize/app/humanize.py init
+# then: "Read ~/.humanize/app/SKILL.md and follow the one-shot bootstrap."</code></pre><button class="copy" type="button" data-target="c2">Copy</button></figure>
+    </div>
+    <div class="panel reveal" role="tabpanel" id="p-any" aria-labelledby="t-any" hidden>
+      <p>Any model that can run shell commands works. Paste <code>SKILL.md</code> at the top of the conversation and it will open the layer guides it needs, one at a time.</p>
+      <figure class="code copyable"><pre id="c3"><code>python3 ~/.humanize/app/humanize.py status
+python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type="button" data-target="c3">Copy</button></figure>
+    </div>
+    <p class="note reveal">The repository is private, so git needs to be able to read it. Ask 0xArx for access.</p>
+
+    <h3 class="h3s cmdh reveal">The commands</h3>
+    <div class="cmds reveal" role="table" aria-label="Commands">
+      <div role="row"><code role="cell">init</code><span role="cell">Set up, draw the avatar, open the dashboard. Safe to run again.</span></div>
+      <div role="row"><code role="cell">open</code><span role="cell">Open the dashboard in your browser again.</span></div>
+      <div role="row"><code role="cell">status</code><span role="cell">What the agent is and what it has.</span></div>
+      <div role="row"><code role="cell">doctor --fix</code><span role="cell">Check the machine and the install, and repair what it can.</span></div>
+      <div role="row"><code role="cell">demo</code><span role="cell">A filled sample agent in a scratch folder, to see it first.</span></div>
+      <div role="row"><code role="cell">self init | push | load</code><span role="cell">Back the agent up, encrypted, and load it on any machine.</span></div>
+      <div role="row"><code role="cell">memory add | search</code><span role="cell">Its notes and the people it has met.</span></div>
+      <div role="row"><code role="cell">secret list | migrate</code><span role="cell">See what is in the secret store, and move stray plain text into it.</span></div>
+      <div role="row"><code role="cell">get | set | log</code><span role="cell">How the agent reads and writes what it owns, safely.</span></div>
+    </div>
+    <ul class="reqs reveal" aria-label="Requirements">
+      <li>Python 3.9 or newer</li><li>git</li><li>macOS or Linux</li><li>openssl, for the backup</li><li>Node 18, for two optional tools</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ STATUS ============ -->
+<section class="sec" id="status" aria-labelledby="h-status">
+  <div class="wrap">
+    <p class="kicker reveal">Where it stands</p>
+    <h2 id="h-status" class="reveal">Tested where it can be. Honest about where it has not been.</h2>
+    <div class="stats">
+      <div class="stat reveal"><b>104</b><span>automated tests</span></div>
+      <div class="stat reveal"><b>3</b><span>CI jobs: Ubuntu 3.9, 3.12 and macOS</span></div>
+      <div class="stat reveal"><b>24</b><span>layer guides, each checked against the vendors' own docs</span></div>
+      <div class="stat reveal"><b>0</b><span>accounts created during testing</span></div>
+    </div>
+    <div class="ledger reveal" role="table" aria-label="How far each provider has been verified">
+      <div role="row" class="lh"><span role="columnheader">Provider</span><span role="columnheader">Docs read</span><span role="columnheader">Reachable</span><span role="columnheader">Run live</span></div>
+      <div role="row"><span role="cell">Mailgent</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
+      <div role="row"><span role="cell">AgentMail</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
+      <div role="row"><span role="cell">AgentPhone</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
+      <div role="row"><span role="cell">Dial</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
+      <div role="row"><span role="cell">x402 Bazaar</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="p">listing only</span></div>
+      <div role="row"><span role="cell">GitHub</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="y">git and API</span></div>
+    </div>
+    <p class="honest reveal">Nothing that creates an account has been run yet, because that is a real action. The guides are written from each vendor's own documentation, and the first real run is the last round of testing. Where a provider turned out not to be agent-only, such as Dial's phone check or GitHub's CAPTCHA, the guide says so.</p>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="sec tint" id="faq" aria-labelledby="h-faq">
+  <div class="wrap narrow">
+    <p class="kicker reveal">Questions</p>
+    <h2 id="h-faq" class="reveal">Things people ask.</h2>
+    <details class="reveal"><summary>What does "humanize" mean here?</summary><p>Giving an agent the things a person has and it does not: a way to be reached, to pay, to prove who it is, to remember, and to keep existing. It is about capability and continuity, not about making an agent sound human.</p></details>
+    <details class="reveal"><summary>Does the agent really sign up for everything itself?</summary><p>For the first ten steps, yes: inbox, phone, wallet, vault, calendar, memory and the rest, with no person and no cost. For services that show a CAPTCHA or forbid automated sign-up, such as GitHub, X and Discord, it prepares everything and asks you for one batched handoff. It never pretends otherwise.</p></details>
+    <details class="reveal"><summary>What does it cost?</summary><p>The first ten steps cost nothing. The phone number has a five dollar credit and then three dollars a month. Everything paid after that, such as a card, a domain or a paid lookup, happens only when you fund it.</p></details>
+    <details class="reveal"><summary>Where do my agent's keys go?</summary><p>Not in a plain file. Passwords and account tokens go in the Mailgent vault. The few keys the agent needs to reach it go in the macOS Keychain or the Linux keyring. The identity file holds only pointers, and the backup is encrypted.</p></details>
+    <details class="reveal"><summary>Can a website I visit control my agent?</summary><p>No. The dashboard runs on your machine only, answers only requests addressed to itself, refuses anything from another site, and needs a token and your access key. The first version was open to exactly that attack, so it is now a test that must keep failing.</p></details>
+    <details class="reveal"><summary>What if I lose the self key?</summary><p>The backup cannot be recovered, by design. The key is shown once when the backup is created, and saved in your Keychain so pushes run unattended. Keep a copy somewhere safe.</p></details>
+    <details class="reveal"><summary>Which platforms does it run on?</summary><p>macOS and Linux, with Python 3.9 or newer. On Windows, use WSL. It has no Python packages to install.</p></details>
+    <details class="reveal"><summary>Does it phone home?</summary><p>No. The dashboard makes no third-party requests, the fonts are bundled, and nothing is sent anywhere except to the services the agent signs up for, on your behalf.</p></details>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div><b class="serif">Humanize</b><p>Version 0.2.0. MIT licensed. Made by 0xArx.</p></div>
+    <p class="fine">This page is a static site. It loads nothing from other websites, and runs no trackers.</p>
+  </div>
+</footer>
+
+<script src="/orb.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -51,6 +51,16 @@ A guide in `layers/NN-name.md` opens with `# Layer N: Title`, then the same fiel
 5. Add a dated line to `docs/providers.md` saying what you checked and how, and end the guide with a short status note that matches it.
 6. Update the layer tables in `SKILL.md` and `README.md` if a layer's human-needed column changes.
 
+### The website
+
+`site/` is a plain static site: `index.html`, `styles.css`, `app.js`, `early.js`, and a copy of `scripts/orb.js`. No build step.
+
+- It follows the same rules as the dashboard: no third-party requests, no inline styles, no inline scripts, no inline event handlers. `site/vercel.json` sends a strict CSP, so anything inline would break in production.
+- `site/orb.js` must be an exact copy of `scripts/orb.js`. Copy it again after changing the avatar code.
+- The layer cards, counts, version and provider table make claims. `tests/test_site.py` checks each against the repo, so update the page when the product changes rather than the other way round.
+- Do not claim more than is true. The status section says no live sign-up has been run; change that only when it has.
+- Deploy with `cd site && npx vercel deploy --prod --yes`. Never commit `.vercel/` or `.env*`.
+
 ### Layout
 
 See the tree in `README.md`. `docs/architecture.md` explains how the parts fit.

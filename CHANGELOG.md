@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- A website in `site/`, deployed on Vercel: what Humanize does, how to use it, the 24 layers with filters, a live avatar generator that recolours the page, the dashboard, security, status and FAQ. Strict CSP, no third-party requests, and tests that check every claim against the repo.
+
 ## [0.2.0] - 2026-09-21
 
 ### Added

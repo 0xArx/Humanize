@@ -13,4 +13,5 @@ python3 humanize.py demo                   # look at the dashboard on a sample a
 - No em dashes anywhere. Write plain sentences.
 - Keep third parties out of the dashboard: no CDN, no analytics, no fonts fetched from the network.
 - A layer guide has the same shape as the others. Prefer a service an agent can sign itself up for, then a free local tool, and name any human step explicitly.
+- The website in `site/` follows the same rules and is checked by `tests/test_site.py`.
 - Commit under your own name with no attribution trailers.
