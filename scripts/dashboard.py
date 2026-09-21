@@ -335,6 +335,8 @@ class Handler(BaseHTTPRequestHandler):
         cmd = store.get(d, "host.open_command")
         if not cmd:
             return self._fail(400, "host.open_command is not set. Click Host and pick where your chat lives.")
+        if not isinstance(cmd, str):
+            return self._fail(400, "host.open_command must be text. Set it again from the Host dialog.")
         try:
             p = subprocess.Popen(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                  stderr=subprocess.PIPE, start_new_session=True, text=True)

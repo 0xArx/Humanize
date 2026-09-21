@@ -21,7 +21,7 @@ At the start of every turn, and after every provisioning step (details in [Layer
 
 ## The identity file
 
-Everything the agent owns lives in `~/.humanize/identity.json` (mode 600). Never edit it by hand: the dashboard writes to it too. Use `get`, `set`, `log`, `requests` and `done`, which lock the file so no edit is lost. `identity.template.json` lists every key.
+Everything the agent owns lives in `~/.humanize/identity.json` (mode 600). Never edit it by hand: the dashboard writes to it too. Use `get`, `set`, `log`, `requests` and `done`, which lock the file so no edit is lost. `set` keeps text as text and parses booleans and lists where a key expects them (`set rules '["no spend over 50"]'`, `set layers.14.enabled false`); it refuses a value of the wrong type, and `--json` forces JSON. `identity.template.json` lists every key.
 
 Service keys the agent needs to keep working (the Mailgent and AgentPhone API keys) live in the identity file, which is encrypted in every backup. Passwords, TOTP secrets and account tokens go in the vault ([Layer 13](layers/13-keys-2fa.md)) with only a pointer in the identity file.
 

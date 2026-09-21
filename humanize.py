@@ -20,7 +20,7 @@
 
   For the agent, so it never hand-edits the identity file:
   get PATH                   print one value, e.g. get email.agentmail.address
-  set PATH VALUE [--log T]   write one value (VALUE is JSON if it parses, else a string)
+  set PATH VALUE [--log T]   write one value; text stays text, lists, objects and booleans are parsed where the key expects them (--json forces JSON)
   log TEXT [--cost C]        append to the activity log
   requests [--all]           pending requests the human typed into the dashboard, as JSON
   done INDEX                 mark a request finished
@@ -34,6 +34,7 @@ import json
 import os
 import platform
 import random
+import re
 import shutil
 import signal
 import socket
@@ -41,6 +42,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.request
 import webbrowser
 from pathlib import Path
@@ -113,9 +115,14 @@ def find_port(start):
     die(f"no free port between {start} and {start + 39}")
 
 
+# Calls to the dashboard on this machine must never go through a proxy. urllib would otherwise honour
+# http_proxy, VPN and macOS system proxy settings and fail to reach 127.0.0.1.
+_LOCAL = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def ping(port):
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1.0) as r:
+        with _LOCAL.open(f"http://127.0.0.1:{port}/api/ping", timeout=1.0) as r:
             return json.loads(r.read()).get("app") == "humanize"
     except Exception:
         return False
@@ -160,7 +167,7 @@ def start_dashboard(port, open_browser):
         logf = open(home() / "dashboard.log", "w")
         proc = subprocess.Popen([sys.executable, str(SCRIPTS / "dashboard.py"), "--identity", str(ident_path()), "--port", str(port), "--no-open"],
                                 stdout=logf, stderr=logf, start_new_session=True)
-        for _ in range(60):
+        for _ in range(150):   # up to 15 seconds: slow disks and CI runners can take a few
             if proc.poll() is not None:
                 tail = (home() / "dashboard.log").read_text().strip().splitlines()[-5:]
                 die("the dashboard exited on start:\n  " + "\n  ".join(tail or ["(no output)"]))
@@ -170,7 +177,7 @@ def start_dashboard(port, open_browser):
                 break
             time.sleep(0.1)
         else:
-            die("the dashboard did not come up within 6 seconds; see " + str(home() / "dashboard.log"))
+            die("the dashboard did not come up within 15 seconds; see " + str(home() / "dashboard.log"))
         url = f"http://127.0.0.1:{port}"
     if open_browser:
         open_in_browser(url)
@@ -268,7 +275,7 @@ def cmd_doctor(a):
         print(f"  {level:<5} {text}")
     print(f"Humanize doctor v{__version__}")
     v = sys.version_info
-    row("ok" if v >= (3, 8) else "fail", f"python {v.major}.{v.minor}.{v.micro}" + ("" if v >= (3, 8) else " (need 3.8 or newer)"))
+    row("ok" if v >= (3, 9) else "fail", f"python {v.major}.{v.minor}.{v.micro}" + ("" if v >= (3, 9) else " (need 3.9 or newer)"))
     row("ok" if platform.system() in ("Darwin", "Linux") else "fail", f"platform {platform.system()}" + ("" if platform.system() in ("Darwin", "Linux") else " (use WSL)"))
     for tool, needed_for, hard in (("git", "storing the agent in a repo", False), ("openssl", "encrypting the agent for storage", False), ("node", "the Mailgent and Dial command line tools", False)):
         path = shutil.which(tool)
@@ -362,11 +369,40 @@ def cmd_get(a):
     print(v if isinstance(v, str) else json.dumps(v))
 
 
+def coerce(path, raw, force_json=False):
+    """Turn the text from the command line into the right JSON type for that key.
+
+    The identity template says what a key holds. Text stays text (so `set host.open_command true` stores the
+    word, not a boolean). Booleans, lists and objects are parsed where the key expects them, and an
+    impossible value is an error rather than something stored wrongly. A key the template does not know is
+    text, unless it is a JSON list or object. --json parses whatever it is given."""
+    try:
+        parsed, valid = json.loads(raw), True
+    except ValueError:
+        parsed, valid = None, False
+    if force_json:
+        if not valid:
+            raise store.StoreError(f"{raw!r} is not valid JSON")
+        return parsed
+    if re.fullmatch(r"layers\.\d+\.enabled|(accounts|social|messaging)\.[a-z0-9_]+\.enabled", path):
+        expected = False
+    else:
+        expected = store.get(json.loads(TEMPLATE.read_text()), path)
+    for kind, name in ((bool, "true or false"), (list, "a JSON list"), (dict, "a JSON object")):
+        if isinstance(expected, kind):
+            if not (valid and isinstance(parsed, kind)):
+                raise store.StoreError(f"{path} expects {name}, got {raw!r}")
+            return parsed
+    if expected is None or isinstance(expected, str):
+        return parsed if valid and isinstance(parsed, (dict, list)) and expected is None else raw
+    return parsed if valid else raw
+
+
 def cmd_set(a):
     try:
-        value = json.loads(a.value)
-    except ValueError:
-        value = a.value
+        value = coerce(a.path, a.value, a.json)
+    except store.StoreError as e:
+        die(str(e))
 
     def apply(d):
         store.set_path(d, a.path, value)
@@ -407,7 +443,7 @@ def cmd_chat(a):
     req = urllib.request.Request(f"http://127.0.0.1:{info['port']}/api/chat", data=b"{}", method="POST",
                                  headers={"Content-Type": "application/json", "X-Humanize-Token": info["token"]})
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with _LOCAL.open(req, timeout=10) as r:
             print(r.read().decode())
     except urllib.error.HTTPError as e:
         die(json.loads(e.read() or b"{}").get("error", str(e)))
@@ -486,7 +522,7 @@ def main():
     p = add("self", cmd_self); p.add_argument("args", nargs=argparse.REMAINDER)
     p = add("demo", cmd_demo); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
     p = add("get", cmd_get); p.add_argument("path")
-    p = add("set", cmd_set); p.add_argument("path"); p.add_argument("value"); p.add_argument("--log")
+    p = add("set", cmd_set); p.add_argument("path"); p.add_argument("value"); p.add_argument("--log"); p.add_argument("--json", action="store_true", help="parse VALUE as JSON whatever the key")
     p = add("log", cmd_log); p.add_argument("text"); p.add_argument("--cost")
     p = add("requests", cmd_requests); p.add_argument("--all", action="store_true")
     p = add("done", cmd_done); p.add_argument("index", type=int)

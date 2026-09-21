@@ -240,6 +240,12 @@ class BehaviourTests(HomeCase):
         self.assertEqual(s, 400)
         self.assertIn("Host", json.loads(body)["error"])
 
+    def test_a_wrongly_typed_command_is_a_400_not_a_crash(self):
+        store.update(self.identity, lambda d: store.set_path(d, "host.open_command", True))
+        s, _, body = jpost(self.port, self.token, "/api/chat", {})
+        self.assertEqual(s, 400)
+        self.assertIn("must be text", json.loads(body)["error"])
+
     def test_a_long_running_command_counts_as_started(self):
         self.hz("set", "host.open_command", "sleep 30")
         self.assertEqual(jpost(self.port, self.token, "/api/chat", {})[0], 200)

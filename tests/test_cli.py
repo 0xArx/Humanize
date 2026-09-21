@@ -66,6 +66,16 @@ class InitTests(HomeCase):
         self.assertIn("not valid JSON", r.stderr)
         self.assertEqual(self.identity.read_text(), "{oops")
 
+    def test_a_configured_proxy_never_gets_in_the_way_of_local_calls(self):
+        """urllib honours proxy settings; calls to 127.0.0.1 must not. This broke init on machines behind a proxy."""
+        proxy = {"http_proxy": "http://127.0.0.1:9", "HTTP_PROXY": "http://127.0.0.1:9", "https_proxy": "http://127.0.0.1:9",
+                 "HTTPS_PROXY": "http://127.0.0.1:9", "all_proxy": "http://127.0.0.1:9"}
+        r = self.hz("init", "--name", "Proxy Test", "--port", "0", "--no-open", env=proxy)
+        self.assertIn("http://127.0.0.1:", r.stdout)
+        self.assertIn("http://127.0.0.1:", self.hz("status", env=proxy).stdout)
+        self.hz("set", "host.open_command", "true", env=proxy)
+        self.assertIn('"ok"', self.hz("chat", env=proxy).stdout)
+
     def test_version(self):
         self.assertRegex(self.hz("--version").stdout, r"humanize \d+\.\d+\.\d+")
 
@@ -108,6 +118,25 @@ class AgentHelperTests(HomeCase):
         self.assertEqual(self.hz("get", "layers.14.enabled").stdout.strip(), "false")
         self.assertEqual(json.loads(self.hz("get", "rules").stdout), ["no spend over 50"])
         self.assertNotEqual(self.hz("get", "nothing.here", check=False).returncode, 0)
+
+    def test_set_respects_what_each_key_holds(self):
+        self.hz("set", "host.open_command", "true")
+        self.assertEqual(self.load()["host"]["open_command"], "true", "the word true is a command, not a boolean")
+        self.hz("set", "persona", "123")
+        self.assertEqual(self.load()["persona"], "123")
+        self.hz("set", "rules", '["a","b"]')
+        self.assertEqual(self.load()["rules"], ["a", "b"])
+        self.hz("set", "layers.3.enabled", "false")
+        self.assertIs(self.load()["layers"]["3"]["enabled"], False)
+        self.hz("set", "messaging.telegram.token", '{"a": 1}')
+        self.assertEqual(self.load()["messaging"]["telegram"]["token"], {"a": 1}, "an unknown key takes a JSON object as it is")
+        self.hz("set", "eyes.count", "5", "--json")
+        self.assertEqual(self.load()["eyes"]["count"], 5)
+        for path, bad in (("rules", "oops"), ("layers.3.enabled", "maybe"), ("wallet", "text")):
+            r = self.hz("set", path, bad, check=False)
+            self.assertNotEqual(r.returncode, 0, path)
+            self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(self.load()["rules"], ["a", "b"], "a rejected value changes nothing")
 
     def test_set_with_log_and_log_with_cost(self):
         self.hz("set", "did", "did:key:z6Mk", "--log", "stored did")

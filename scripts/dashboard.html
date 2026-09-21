@@ -296,7 +296,8 @@
 <script nonce="__HZ_NONCE__">
 /* ---------- layer catalogue: what each layer shows from the identity file ---------- */
 const g = (o, p) => p.split(".").reduce((a, k) => (a && a[k] !== undefined && a[k] !== null ? a[k] : null), o);
-const keys = o => Object.keys(o || {});
+const keys = o => (o && typeof o === "object" ? Object.keys(o) : []);
+const arr = v => (Array.isArray(v) ? v : []);   // a hand-edited file can hold the wrong type; the page must still load
 const real = v => v !== null && v !== undefined && v !== "" && v !== "not_provisioned";
 const LAYERS = [
   { n: 0,  t: "Identity",   d: "Name, persona, and its own DID.",                            get: i => [["name", i.name], ["did", i.did]] },
@@ -390,7 +391,7 @@ function matches(s) {
 function setIfIdle(sel, v) { const el = $(sel); if (document.activeElement !== el && el.value !== v) el.value = v; }
 function render() {
   const i = ID, states = allStates(i);
-  setIfIdle("#name", i.name || ""); setIfIdle("#persona", i.persona || ""); setIfIdle("#rules", (i.rules || []).join("\n"));
+  setIfIdle("#name", i.name || ""); setIfIdle("#persona", i.persona || ""); setIfIdle("#rules", arr(i.rules).join("\n"));
   $("#did").textContent = i.did || "no DID yet";
   $("#hostTxt").textContent = g(i, "host.app") || "unset";
   $("#ver").textContent = META.version ? "v" + META.version : "";
@@ -409,14 +410,14 @@ function render() {
   }
 
   const live = states.filter(s => s.st).length, partial = states.filter(s => s.st === "partial").length, off = states.filter(s => !s.en).length;
-  const pending = (i.dashboard_requests || []).filter(r => !r.done).length;
-  const lastLog = (i.log || []).slice(-1)[0];
+  const pending = arr(i.dashboard_requests).filter(r => !r.done).length;
+  const lastLog = arr(i.log).slice(-1)[0];
   const reach = [g(i,"email.agentmail.address") || g(i,"email.mailgent.address"), g(i,"phone.agentphone.number") || g(i,"phone.dial.number"), keys(i.messaging)[0] ? keys(i.messaging).join(", ") : null].filter(real);
   const wallet = g(i, "wallet.mailgent_base_usdc"), card = g(i, "card.status");
   $("#kpis").innerHTML =
     `<div class="card kpi"><span class="lab">Layers provisioned</span><span class="val">${live}<small>of ${LAYERS.length}</small></span><span class="sub">${partial ? partial + " partly set up" : "all complete"}${off ? ", " + off + " switched off" : ""}</span><div class="bar"><i style="width:${Math.round((live / LAYERS.length) * 100)}%"></i></div></div>` +
     `<div class="card kpi"><span class="lab">Reachable at</span><div class="lines">${reach.length ? reach.slice(0, 3).map(r => `<span title="${esc(r)}">${esc(r)}</span>`).join("") : `<span style="color:var(--mute)">nowhere yet</span>`}</div></div>` +
-    `<div class="card kpi"><span class="lab">Money</span><span class="val" style="font-size:24px;padding-top:6px">${real(wallet) ? esc(short(wallet)) : "no wallet"}</span><span class="sub">${real(card) ? "card: " + esc(card) : "no card yet"} &middot; ${esc(g(i, "rules") && (i.rules || []).length ? (i.rules || []).length + " rule(s)" : "no rules")}</span></div>` +
+    `<div class="card kpi"><span class="lab">Money</span><span class="val" style="font-size:24px;padding-top:6px">${real(wallet) ? esc(short(wallet)) : "no wallet"}</span><span class="sub">${real(card) ? "card: " + esc(card) : "no card yet"} &middot; ${esc(g(i, "rules") && arr(i.rules).length ? arr(i.rules).length + " rule(s)" : "no rules")}</span></div>` +
     `<div class="card kpi"><span class="lab">Waiting on the agent</span><span class="val">${pending}<small>request${pending === 1 ? "" : "s"}</small></span><span class="sub">${lastLog ? "last activity " + ago(lastLog.at) : "no activity yet"}</span></div>`;
 
   const counts = { all: states.length, live: states.filter(s => s.st && s.en).length, empty: states.filter(s => !s.st).length, off };
@@ -429,12 +430,12 @@ function render() {
     return `<section class="group reveal" style="animation-delay:${.1 + gi * .05}s"><h2>${name}<small>${cards.length} layer${cards.length === 1 ? "" : "s"}</small></h2><div class="grid">` + cards.map(cardHtml).join("") + `</div></section>`;
   }).join("") || `<div class="none-found">No layers match. <button class="sm" data-filter="all">Show all</button></div>`;
 
-  const reqs = (i.dashboard_requests || []).map((r, idx) => ({ ...r, idx })).reverse();
+  const reqs = arr(i.dashboard_requests).map((r, idx) => ({ ...r, idx })).reverse();
   $("#nReqs").textContent = pending ? pending : "";
   $("#p-reqs").innerHTML = reqs.map(r => `<div class="it ${r.done ? "done" : ""}"><time>${fmt(r.at)}</time><span class="txt">${esc(r.text)}</span>${r.done ? `<span class="by">done</span>` : `<button class="sm ghost" data-act="done" data-i="${r.idx}">mark done</button>`}</div>`).join("") || `<div class="empty">Nothing waiting. Type above to ask the agent for something.</div>`;
-  const log = (i.log || []).slice(-80).reverse();
+  const log = arr(i.log).slice(-80).reverse();
   $("#p-log").innerHTML = log.map(l => `<div class="it"><time>${fmt(l.at)}</time><span class="txt">${esc(l.did || "")}${l.cost ? ` <span class="by">&middot; ${esc(l.cost)}</span>` : ""}</span><span class="by">${esc(l.by || "agent")}</span></div>`).join("") || `<div class="empty">No activity yet.</div>`;
-  $("#nRules").textContent = (i.rules || []).length || "";
+  $("#nRules").textContent = arr(i.rules).length || "";
   renderSelfChip();
   if (DRAWER !== null) renderDrawer();
 }

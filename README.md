@@ -40,7 +40,7 @@ Then tell your agent:
 
 Watch the dashboard fill in. Want to see it first? `python3 humanize.py demo` opens a fully filled sample agent in a scratch folder without touching anything real.
 
-**Requirements:** Python 3.8 or newer and git. macOS or Linux (Windows through WSL). openssl for the encrypted backup, Node 18 or newer for the Mailgent and Dial command line tools. There are no Python packages to install; Pillow, used only to write the avatar as a PNG, is installed on demand into `~/.humanize/pydeps` and never touches your system Python.
+**Requirements:** Python 3.9 or newer (tested on 3.9 and 3.12) and git. macOS or Linux (Windows through WSL). openssl for the encrypted backup, Node 18 or newer for the Mailgent and Dial command line tools. There are no Python packages to install; Pillow, used only to write the avatar as a PNG, is installed on demand into `~/.humanize/pydeps` and never touches your system Python.
 
 ## What the agent gets
 

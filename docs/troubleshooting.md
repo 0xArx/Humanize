@@ -52,4 +52,4 @@ Start with `python3 humanize.py doctor`. It checks Python, git, openssl, Node, P
 
 ## Platform
 
-Humanize supports macOS and Linux. On Windows use WSL. It needs Python 3.8 or newer.
+Humanize supports macOS and Linux. On Windows use WSL. It needs Python 3.9 or newer.
