@@ -177,7 +177,10 @@ def start_dashboard(port, open_browser):
                 break
             time.sleep(0.1)
         else:
-            die("the dashboard did not come up within 15 seconds; see " + str(home() / "dashboard.log"))
+            tail = (home() / "dashboard.log").read_text().strip().splitlines()[-3:]
+            die("the dashboard did not answer within 15 seconds"
+                + (" (its process is still running)" if proc.poll() is None else "")
+                + ". Its log, " + str(home() / "dashboard.log") + ":\n  " + "\n  ".join(tail or ["(empty)"]))
         url = f"http://127.0.0.1:{port}"
     if open_browser:
         open_in_browser(url)

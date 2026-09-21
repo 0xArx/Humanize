@@ -24,6 +24,7 @@ import os
 import re
 import secrets
 import signal
+import socketserver
 import subprocess
 import sys
 import threading
@@ -373,6 +374,12 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+
+    def server_bind(self):
+        # The standard library resolves the machine's own name here (socket.getfqdn), which can take many
+        # seconds on a network with slow or broken DNS, and the port is not listening until it returns.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 def main():

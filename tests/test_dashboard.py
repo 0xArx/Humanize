@@ -129,6 +129,29 @@ class SecurityTests(HomeCase):
         self.assertEqual((s, h["content-type"]), (200, "image/png"))
 
 
+class StartupTests(unittest.TestCase):
+    def test_starting_the_server_never_does_a_reverse_dns_lookup(self):
+        """http.server resolves the machine's own name before it listens; on slow DNS the port stays closed for
+        many seconds. On a CI runner this made every dashboard start take about 30 seconds."""
+        import socket, sys, time
+        from helpers import ROOT
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import dashboard
+        real = socket.getfqdn
+
+        def slow(*a, **k):
+            raise AssertionError("socket.getfqdn was called while starting the dashboard server")
+        socket.getfqdn = slow
+        try:
+            t0 = time.time()
+            srv = dashboard.Server(("127.0.0.1", 0), dashboard.Handler)
+            self.assertLess(time.time() - t0, 2)
+            self.assertEqual(srv.server_port, srv.server_address[1])
+            srv.server_close()
+        finally:
+            socket.getfqdn = real
+
+
 class AccessTests(HomeCase):
     """Another user on the same machine can reach 127.0.0.1 too. Only the owner may load the page."""
 
