@@ -1,75 +1,56 @@
 # AGENTS.md
 
-Instructions for AI agents working in or with this repository.
+For AI agents that work in this repository, and for agents that use it.
 
-## What this repo is
+## Using Humanize as an agent
 
-One skill, `humanize`, defined in `SKILL.md`. It gives an agent everything a person has: an email, a phone, WhatsApp, a card, a browser, and accounts on services, each provisioned through APIs with Orthogonal as the marketplace. The browser layer uses whatever the host agent already has (Claude Code, Codex, a Playwright MCP) and rents Notte only as a fallback. No code, no build, no tests. The markdown is the product.
+Start at `SKILL.md`. It is short on purpose: it tells you how to work each turn, which provider to prefer, which layer guide to open, and which steps need a person. Open a guide in `layers/` only when you need that layer. Never edit `~/.humanize/identity.json` by hand; use `humanize.py get`, `set`, `log`, `requests` and `done`.
 
-## Install
+Installing it as a skill:
 
-**Anywhere**
+| Host | How |
+|------|-----|
+| Claude Code | `install.sh` links this folder to `~/.claude/skills/humanize`, or `ln -s ~/.humanize/app ~/.claude/skills/humanize`. Then `/humanize` or just ask. |
+| Codex, Cursor, Windsurf, Cline, OpenClaw | This file and `SKILL.md` are plain markdown. Point the agent at `~/.humanize/app/SKILL.md`, or paste it into the rules file. Give it a shell. |
+| Any chat model with a shell | Paste `SKILL.md` and let it open the layer files it needs. |
+
+## Working on this repository
+
+The product is markdown plus a handful of small Python and JavaScript files. Standard library only: no package manifest, no build step, no dependency to install. The only optional third-party code is Pillow, installed on demand into the user's `~/.humanize/pydeps` for the avatar PNG.
+
+### Before you finish any change
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh
+python3 -m unittest discover -s tests
 ```
 
-That clones to `~/.humanize/app`, symlinks it into `~/.claude/skills/humanize` when Claude Code is present, and runs `humanize.py init`.
+It must pass. A bug fix ships with a test that fails without it. Tests use a throwaway `HUMANIZE_HOME`; never point one at the real `~/.humanize`.
 
-**Claude Code, by hand**
+### Rules
 
-```bash
-git clone https://github.com/0xArx/Humanize.git ~/.claude/skills/humanize
-python3 ~/.claude/skills/humanize/humanize.py init
-```
+- **No em dashes** anywhere. `tests/test_repo.py` enforces it.
+- **No third-party requests from the dashboard.** No CDN, no analytics, no fonts fetched from the network. Fonts are bundled.
+- **No inline event handlers** in `scripts/dashboard.html`. It runs under a strict CSP. Use `data-act` attributes and the delegated listeners, and escape every value with `esc()`.
+- **The avatar maths must stay identical** in `scripts/avatar.py` (`params`) and `scripts/orb.js` (`orbParams`), including the order of random draws. `tests/test_avatar_parity.py` compares them for several seeds. Change both or neither.
+- **Secrets never reach the browser.** `store.mask` hides any value under a secret-looking key. When you add a key whose name does not match, extend `_SECRET` and add a test.
+- **Only fields listed in `WRITABLE` in `scripts/dashboard.py` can be written from the browser**, each with a type check. Keep that list short.
+- **Every writer uses `scripts/store.py`** (locked, atomic, with a `.bak`). Do not write the identity file any other way.
+- **`self.py` must never commit a plaintext identity or memory.** Test a round trip with a local bare repo before changing it.
+- **The identity template is the schema.** A new identity key goes in `identity.template.json`, and in the dashboard's `LAYERS` if a layer should show it. `doctor --fix` adds new keys to existing identities.
+- **No secrets in the repo**, including examples. `tests/test_repo.py` scans for common key shapes.
+- **Commits** are made under your own name, with no attribution trailers, in short plain imperative sentences.
 
-Then `/humanize` or ask for anything the skill description covers.
+### Writing or changing a layer guide
 
-**Other agents (Cursor, Codex, OpenClaw, custom)**
+A guide in `layers/NN-name.md` opens with `# Layer N: Title`, then the same fields the others have: what it gives the agent, whether a person is needed, what it costs, and which identity keys it uses. Then the steps.
 
-Paste `SKILL.md` into the system prompt or rules file and give the agent shell access. That is all it needs to start.
+1. Prefer a service the agent can sign itself up for with its own email and number. Then a free local tool or keyless API. Then one signup that replaces many. A single vendor's account is last.
+2. **Read the vendor's own docs and run what you can.** Paste real endpoints and flags. Do not guess field names. If the docs do not say, say so in the guide.
+3. State the cost. If it is not free, give the number.
+4. Name every human step. If a CAPTCHA, an identity check or a legal signature is involved, say so, and never present a service as agent-only when it is not.
+5. Add a dated line to `docs/providers.md` saying what you checked and how, and end the guide with a short status note that matches it.
+6. Update the layer tables in `SKILL.md` and `README.md` if a layer's human-needed column changes.
 
-## Prerequisites the agent needs at runtime
+### Layout
 
-- Shell access, Node 18+, Python 3 with Pillow. That is enough for the base identity (Layers 0 to 2, 6 to 8, 11, 13, 15) and the dashboard (Layer 22, stdlib only).
-- `orth` CLI on PATH with `ORTHOGONAL_API_KEY` exported for Layers 9, 12, 19, 20 and the Notte fallback. Check credit with `orth balance`.
-- No human needs to be present for setup. The Human touchpoints table in `SKILL.md` lists the few later steps that do.
-
-## How the skill is organised
-
-Layers, numbered 0 to 23, then a final rules step. Each layer is one thing a human has. Each layer section has the same parts: what it is for, how to provision it, how to use it, what it costs, and what to store in the identity file.
-
-Layer 6 (accounts) holds one recipe per service. Every recipe has the same four lines: sign up, token, verify, then what to do after.
-
-## Adding a new layer or recipe
-
-1. Prefer an agent-native provider: one where the agent signs itself up with its own email or number and gets a key back with no person involved. Then Orthogonal (`orth search "<capability>"`). Then a direct vendor API. Name any human step explicitly and add it to the Human touchpoints table.
-2. Run every command you write down. Paste real parameter names from `orth api show <slug> <path>`. Do not guess.
-3. State the cost. If it is not free, say the number.
-4. Say what goes into the identity file and under which key.
-5. Keep the section shape identical to the existing ones. An agent reading layer 7 should already know the layout from layer 1.
-6. If the provider has no API and needs the browser layer, say which URL and what the agent should stop at. Do not tie a recipe to Notte or any one browser; it must work with whichever browser Layer 5 picked.
-
-## Rules
-
-- `SKILL.md` is the source of truth. README and this file describe it, never extend it.
-- No secrets in the repo. The identity file lives at `~/.humanize/`, never here. Example values in docs are placeholders.
-- No em dashes anywhere in the repo.
-- The skill ships with no rules of its own. Rules come from the human at step 7 and live in the identity file. Do not hardcode restrictions into a layer.
-- Do not add a package manifest or build step. Helpers go in `scripts/` as single-file Python or shell with at most one pip dependency, and get referenced from `SKILL.md`.
-
-## Dashboard
-
-`humanize.py` at the root is the entrypoint and must stay stdlib-only and dependency-free so `init` works on a bare machine. `scripts/dashboard.py` serves `scripts/dashboard.html`. Rules:
-
-- Stdlib only. No frameworks, no CDN, no build. It must open offline.
-- Secrets never reach the browser. Anything matching the `SECRET_KEYS` pattern is masked server-side; extend the pattern when you add a new secret field name to the identity schema.
-- Only fields matched by `ALLOWED` are writable from the page. Add a layer to `LAYERS` in the HTML when you add one to `SKILL.md`, with a `get` that reads the identity file paths that layer stores.
-- Test with a scratch home, never the real one: `HOME=/tmp/hz python3 humanize.py init --no-open`, or `python3 humanize.py demo`.
-- When you add a key to the identity schema, add it to `identity.template.json` too, and to `LAYERS` in the HTML if a layer should show it.
-- The avatar maths in `scripts/avatar.py` (palette from sha256, mulberry32 RNG, ribbon parameters) and in `dashboard.html` must stay identical, so the PNG and the live avatar match. Change both or neither.
-- `scripts/self.py` must never commit a plaintext identity. Test a round trip with `HOME` pointed at a scratch directory and a local bare repo before changing it.
-
-## Commit style
-
-Short, plain, imperative. "Add WhatsApp recipe." "Fix AgentPhone verify example."
+See the tree in `README.md`. `docs/architecture.md` explains how the parts fit.

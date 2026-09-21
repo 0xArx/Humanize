@@ -1,113 +1,142 @@
 # Humanize
 
-A skill that turns an AI agent into a functioning person.
+Give an AI agent everything a person has: an inbox, a phone number, a wallet, accounts, an avatar, a voice and a memory. One command gets you a running dashboard where you can watch it happen and steer it.
 
-Agents hit walls for boring reasons. They cannot receive a verification email. They cannot get an SMS code. They cannot pay for the thing they need. They cannot sign up anywhere that has no API. Humanize provisions each of those, in order, through APIs, and keeps the result in one identity file so the agent knows what it owns. It uses Orthogonal wherever a provider is listed there and goes direct to the vendor everywhere else.
+<p align="center"><img src="docs/dashboard-light.png" alt="The Humanize dashboard in light mode" width="900"></p>
 
-## What the agent gets
+## What it is
 
-| Layer | What | Where it comes from | Human needed |
-|-------|------|---------------------|--------------|
-| 0 | Name, persona, DID | picked by the agent, DID from Mailgent | no |
-| 1 | Email inbox | Mailgent (one empty POST), AgentMail (free, 3 inboxes) | no |
-| 2 | Phone, SMS, voice | AgentPhone ($5 credit), Dial (200+ countries, iMessage) | no |
-| 3 | WhatsApp, Telegram, Discord, Slack, iMessage | Meta Cloud API, BotFather, Discord and Slack apps, Dial | no |
-| 4 | Money: x402 USDC wallet, more wallets, Stripe, a card | Mailgent wallet, local keygen, Stripe, AgentWallet or AgentCard | fund once; card needs one ID check |
-| 5 | A browser it can drive | the host's own browser tools, Notte via Orthogonal as fallback | no |
-| 6 | Accounts: GitHub, Vercel, Supabase, any service | sign-up protocol with its own inbox and number | no |
-| 7 | An avatar: flowing luminous ribbons, unique colours, not a face | `scripts/avatar.py`, local | no |
-| 8 | A voice | AgentPhone voice library, ElevenLabs via Orthogonal | no |
-| 9 | Eyes on the world: search, scrape, weather, local businesses | Exa, Tavily, Perplexity, Olostep, Openmart, Precip via Orthogonal | Orthogonal key |
-| 10 | Its own computer | Smol Machines via Orthogonal, or E2B, Fly.io, Hetzner via GitHub login | no |
-| 11 | Memory: notes, people, files | Supabase pgvector, private GitHub repo | no |
-| 12 | Brain: extra models | OpenRouter via Orthogonal, or direct keys | Orthogonal key |
-| 13 | Passwords, TOTP 2FA, recovery codes | Mailgent vault, which is also the authenticator | no |
-| 14 | Social profiles: X, LinkedIn, Reddit, more | sign-up protocol | no |
-| 15 | Calendar and a booking page | Mailgent calendar, Cal.com | no |
-| 16 | A street address and physical mail | Stable, Earth Class Mail, iPostal1, Lob | notarised form |
-| 17 | A domain, a website, email at its own domain | Vercel Domains, Namecheap, AgentMail custom domain | no |
-| 18 | E-signatures and documents | Dropbox Sign, DocuSign | no |
-| 19 | Verifying other people | Didit via Orthogonal | Orthogonal key |
-| 20 | Contacts and people lookup | Hunter, People Data Labs, Apollo, Edges via Orthogonal | Orthogonal key |
-| 21 | A legal entity | Stripe Atlas, Firstbase, doola | sign formation docs |
-| 22 | A dashboard: see everything, switch layers, edit, ask, open chat | `scripts/dashboard.py`, local | no |
-| 23 | Itself, stored: encrypted private repo, loadable on any machine | `scripts/self.py`, GitHub | keep the self key |
-| last | Rules, only if you want them | you | if you want |
+Agents fail at boring things. They cannot receive a verification email, pass an SMS code, pay for something, remember yesterday, or survive the laptop dying. Humanize is a **skill** (`SKILL.md` and 24 short layer guides that any agent can follow) plus a few **local tools** (a CLI, a dashboard, an encrypted backup) that make the result visible and durable.
 
-Every layer is provisioned step by step: sign up, receive the code, verify, get the token, check the token works, store it. The agent uses its own email and phone for all of this, never yours, so it never has to stop and ask you for a code. The base identity (inbox, phone, avatar, voice, vault, calendar, GitHub, Vercel, Supabase) runs in one session with no input from you and no API key to start: the agent signs itself up for each. The only things it cannot do alone are the ones the law ties to a real person: an identity check for a card, bank details for payouts, a notarised form for a mailbox, signing to form a company.
+- **The agent does the work.** It signs itself up for services an agent can use alone, using its own inbox and number for every verification code. It only stops for the few things that genuinely need a person, and it batches those into one message.
+- **Everything lives in one file** (`~/.humanize/identity.json`, mode 600), so the agent always knows what it owns and never buys anything twice.
+- **You stay in control.** The dashboard shows every layer, lets you switch any of them off, edit the name, persona and rules, ask for changes, and jump back into the chat.
+- **It survives.** The agent's whole self is stored encrypted in a private git repo and loads on any machine.
 
-## Install
+## Quick start
 
-One line. Clones the repo into `~/.humanize/app`, links it as a Claude Code skill if you have Claude Code, creates the identity, draws the avatar, and opens the dashboard. About five seconds.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh
-```
-
-Or by hand:
+The repository is private, so git needs to be able to read it (an existing login, or a token).
 
 ```bash
 git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
 python3 ~/.humanize/app/humanize.py init --name "Ari Vale"
 ```
 
-Needs git and Python 3. Nothing else to start; Pillow is installed on the fly for the avatar PNG. An Orthogonal key (`ORTHOGONAL_API_KEY`, $10 free on signup) unlocks the world-facing layers later.
-
-**Just want to see it?** `python3 humanize.py demo` opens the dashboard on a fully filled sample agent without touching your real identity.
-
-## Use
-
-Tell your agent any of these:
-
-- "Humanize yourself."
-- "Get yourself an email and a phone number."
-- "Sign up for GitHub and get a token."
-- "Deploy this to Vercel." (it will provision the account if it has none)
-- "Call the dentist and move my appointment."
-
-It reads `~/.humanize/identity.json`, provisions whatever is missing, and gets on with the task.
-
-## Dashboard
+or, with a token:
 
 ```bash
-python3 humanize.py init        # or: dashboard, status, stop
+GITHUB_TOKEN=<token that can read the repo> sh install.sh --name "Ari Vale"
 ```
 
-Opens `http://127.0.0.1:4242`. The live animated avatar, name and persona you can edit in place, DID, copy rows for email, number, wallet and handles. Layers grouped as Self, Reach, Money and World, each with a status pip, its facts, an on/off switch and a Provision or Modify button. A composer to send the agent a request, the rules editor, requests and activity feeds, and a panel showing whether the agent's self is pushed to its repo. Open chat brings back whatever app the agent runs in (Claude Code, Codex, Cursor, VS Code); the Host button lets you pick and test that. Secrets are masked before they reach the browser. The page updates itself every few seconds.
+`init` creates the identity, draws the avatar, works out which app your agent chats in, starts the dashboard in the background and opens it. It takes a few seconds and is safe to run again. The installer also links the folder into `~/.claude/skills/humanize` when Claude Code is installed.
+
+Then tell your agent:
+
+> Set yourself up with Humanize. Read `~/.humanize/app/SKILL.md` and follow the one-shot bootstrap.
+
+Watch the dashboard fill in. Want to see it first? `python3 humanize.py demo` opens a fully filled sample agent in a scratch folder without touching anything real.
+
+**Requirements:** Python 3.8 or newer and git. macOS or Linux (Windows through WSL). openssl for the encrypted backup, Node 18 or newer for the Mailgent and Dial command line tools. There are no Python packages to install; Pillow, used only to write the avatar as a PNG, is installed on demand into `~/.humanize/pydeps` and never touches your system Python.
+
+## What the agent gets
+
+| # | Layer | Gives the agent | A person is needed for |
+|---|-------|-----------------|------------------------|
+| 0 | [Identity](layers/00-identity.md) | a name, a persona, a DID | nothing |
+| 1 | [Email](layers/01-email.md) | inboxes to read and send from | nothing |
+| 2 | [Phone](layers/02-phone.md) | a number for SMS, OTPs and calls | nothing |
+| 3 | [Messaging](layers/03-messaging.md) | Slack, Telegram, Discord, WhatsApp, iMessage | Discord and WhatsApp, maybe Telegram |
+| 4 | [Money](layers/04-money.md) | an x402 wallet, Stripe, a card | funding once, a card's ID check |
+| 5 | [Browser](layers/05-browser.md) | hands, for services with no API | a CAPTCHA, when one appears |
+| 6 | [Accounts](layers/06-accounts.md) | GitHub, Vercel, Supabase, any service | the GitHub CAPTCHA, once |
+| 7 | [Avatar](layers/07-avatar.md) | a mark unique to this agent | nothing |
+| 8 | [Voice](layers/08-voice.md) | one voice for calls and voice notes | nothing |
+| 9 | [Eyes](layers/09-eyes.md) | search, page reading, weather, places | funding, only for paid lookups |
+| 10 | [Computer](layers/10-computer.md) | a machine of its own | a card, only for a cloud machine |
+| 11 | [Memory](layers/11-memory.md) | searchable notes and people | nothing |
+| 12 | [Brain](layers/12-brain.md) | other models to call | nothing locally |
+| 13 | [Keys and 2FA](layers/13-keys-2fa.md) | a vault and an authenticator | nothing |
+| 14 | [Social](layers/14-social.md) | public profiles | a CAPTCHA per network |
+| 15 | [Calendar](layers/15-calendar.md) | a calendar and a booking page | nothing |
+| 16 | [Address](layers/16-address.md) | a street address and mail | a notarised form |
+| 17 | [Domain](layers/17-domain.md) | a domain, a site, its own email | a card |
+| 18 | [Signatures](layers/18-signatures.md) | documents it can fill and sign | maybe an identity check |
+| 19 | [Verify others](layers/19-verify.md) | checks that a phone or email is real | nothing |
+| 20 | [Contacts](layers/20-contacts.md) | people it knows and can find | nothing |
+| 21 | [Entity](layers/21-entity.md) | a company, if needed | a signature |
+| 22 | [Dashboard](layers/22-dashboard.md) | a window for you, and the chat button | nothing |
+| 23 | [Self, stored](layers/23-self-storage.md) | an encrypted backup, loadable anywhere | a git remote and token; keeping the key |
+
+The first ten steps of setup (inbox, number, wallet, DID, vault, calendar, avatar, voice, memory, dashboard) need no person and cost nothing. Providers are chosen in this order: services an agent can sign itself up for, then free keyless tools, then one signup that replaces many (Apify, OpenRouter, the x402 Bazaar), and a single vendor's account only as a last resort.
+
+## The dashboard
+
+<p align="center"><img src="docs/dashboard-dark.png" alt="The Humanize dashboard in dark mode" width="900"></p>
+
+A full-page app in your browser at `http://127.0.0.1:4242` (another port if that one is busy):
+
+- **Agent rail:** the live avatar, name and persona (click to edit), its DID, copy buttons for its email, number, wallet and handles, and the state of its encrypted backup.
+- **Overview:** how many layers are set up, where it can be reached, its money, and what is waiting on it.
+- **Layer grid:** every layer as a card with its facts, an on/off switch and a Provision or Modify button. Filter by All, Live, Empty or Off, search with `/`, and click a card for details.
+- **Request rail:** tell the agent something (Cmd+Enter sends), watch requests, activity, and edit its rules.
+- **Open chat:** takes you back to the app your agent runs in. The Host button lets you pick Claude Code, Codex, Cursor or VS Code and test the command. If it fails it tells you why.
+
+Light by default, dark on the toggle (or `?theme=dark`). It works offline, makes no third-party requests, and secrets are hidden before they reach the browser.
+
+## Commands
+
+```
+python3 humanize.py init [--name N] [--persona P]   set up and open the dashboard
+python3 humanize.py open                            open the dashboard again
+python3 humanize.py status                          what the agent is and has
+python3 humanize.py doctor [--fix]                  check the machine and the install
+python3 humanize.py stop | dashboard | demo | avatar
+python3 humanize.py self init|push|pull|load|unlock|status ...     encrypted backup
+python3 humanize.py memory add|search|person|people ...            its memory
+python3 humanize.py get|set|log|requests|done|chat ...             for the agent
+```
+
+`humanize.py --help` explains each one.
 
 ## Load it anywhere
 
 ```bash
-export HUMANIZE_SELF_KEY=<the self key the agent gave you>
-curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/scripts/self.py -o self.py
-python3 self.py load https://github.com/<agent>/self.git
+git clone https://github.com/<owner>/self.git ~/.humanize/self          # the agent's backup repo, with your token if it is private
+HUMANIZE_SELF_KEY=<the self key> python3 ~/.humanize/self/scripts/self.py unlock
 python3 ~/.humanize/self/humanize.py init
 ```
 
-The agent's identity, avatar, rules and dashboard come back on any machine. The repo is private and the identity file inside it is encrypted; the self key is the only thing you keep.
+Same name, inbox, number, accounts, avatar, memory and rules. The identity and memory are encrypted before they are committed (AES-256 with a PBKDF2 key, sealed with an HMAC). The self key is shown once, when the backup is created, and cannot be recovered, so keep it somewhere safe. See [Layer 23](layers/23-self-storage.md).
 
-## Rules are yours to set
+## Security
 
-Humanize ships with none. When setup finishes the agent asks you one question: do you want any rules? A spend cap, off-limits services, whether it says it is an AI, anything. Whatever you answer is stored in the identity file and followed from then on. Say "none" and it runs with no restrictions.
+The dashboard can run a command on your machine (the Open chat button), so it treats every request as hostile: it binds to `127.0.0.1`, serves the page only to a browser holding your access key, answers only requests addressed to itself, refuses anything that came from another website, needs a per-run token on every call, validates and size-limits input, and runs under a strict content security policy. Secrets never reach the browser. The backup is encrypted, and a wrong key or a tampered file is refused before anything is decrypted. Details and limits are in [SECURITY.md](SECURITY.md).
 
-## Files
+## How far this has been verified
 
-| File | Purpose |
-|------|---------|
-| `SKILL.md` | The skill. Layers 0 to 23, commands, costs, identity file schema, and the rules step. |
-| `AGENTS.md` | Install, runtime prerequisites, and how to add a new layer or recipe. |
-| `scripts/avatar.py` | Draws the agent's avatar, flowing ribbons in its own colours, from a seed. Deterministic, needs only Pillow. |
-| `scripts/self.py` | Stores the agent in a private git repo, identity encrypted with a self key, and loads it back on any machine. |
-| `humanize.py` | The one entrypoint: init, dashboard, status, stop, avatar, self, demo. |
-| `identity.template.json` | Every key the identity file can have, empty. `init` copies it. |
-| `install.sh` | The curl-to-shell installer. |
-| `scripts/dashboard.py`, `scripts/dashboard.html` | Local dashboard. Stdlib Python server plus one HTML page. Reads and writes the identity file, masks secrets, runs the host's open-chat command. |
-| `README.md` | This file. |
+- **Automated tests, all passing:** the dashboard's attack surface (including the cross-site request forgery that the first version was vulnerable to), locking under concurrent writes, the encrypted backup round trip, the Python and JavaScript avatar code producing identical avatars, and the integrity of these docs. Run them with `python3 -m unittest discover -s tests`.
+- **Checked against the vendors' own documentation:** every endpoint, package and command the layers cite, and that the hosts respond. The date and result for each is in [docs/providers.md](docs/providers.md).
+- **Not exercised:** a live sign-up with Mailgent, AgentMail, AgentPhone or Dial. Those create real accounts, so they were left for a real run. Treat a first run as the real test, and report what differs.
 
-## Roadmap
+## Troubleshooting
 
-Every layer that still needs a person (card, mailbox, entity) gets swapped to an agent-native provider the day one exists. Beyond that: a driver's licence equivalent for age-gated services, ride and delivery apps, banking. Each one gets added the same way: find the provider, run the commands, write the recipe. Pull requests welcome. Read `AGENTS.md` first.
+`python3 humanize.py doctor` first. Then [docs/troubleshooting.md](docs/troubleshooting.md) covers the dashboard not opening, a busy port, the locked page, the chat button, a corrupt identity file, backup and key problems.
 
-## License
+## Repository layout
 
-MIT
+```
+SKILL.md                  the router an agent reads first
+layers/                   one guide per layer, 00 to 23
+humanize.py               the command line entry point
+identity.template.json    every key the identity file can hold
+install.sh                clone or update, link as a skill, run init
+scripts/                  dashboard.py, dashboard.html, orb.js, store.py, self.py, memory.py, avatar.py, fonts/
+tests/                    the automated tests
+docs/                     architecture, providers, troubleshooting, screenshots
+AGENTS.md                 for AI agents working in this repo
+SECURITY.md  CHANGELOG.md  CONTRIBUTING.md  LICENSE
+```
+
+## Contributing and license
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). MIT licensed, see [LICENSE](LICENSE). The bundled fonts are under the SIL Open Font License, see [scripts/fonts/LICENSE.md](scripts/fonts/LICENSE.md).
