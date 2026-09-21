@@ -30,9 +30,19 @@ Start with `python3 humanize.py doctor`. It checks Python, git, openssl, Node, P
 
 **No PNG.** Pillow could not be installed. Run `python3 humanize.py avatar` and read the message; it installs into `~/.humanize/pydeps` using `pip install --target`, which works even on systems that block system-wide installs. The dashboard draws the avatar live either way.
 
+## Secrets
+
+**"is not in this machine's secret store".** The identity points at a secret this machine does not have, for example after copying `identity.json` by hand. Load the backup with the self key (`self unlock --force`), which restores every secret, or set it again with `humanize.py set <path> <value>`.
+
+**macOS asks whether to allow access to the Keychain.** Choose Always Allow for `security`. Items are created by `/usr/bin/security`, and that is the tool that reads them.
+
+**No system secret store on Linux.** `secret-tool` needs a desktop session with a keyring. On a headless server secrets fall back to `~/.humanize/secrets.json` (mode 600, plain text) and `doctor` says so. Set `HUMANIZE_KEYSTORE=file` to choose that on purpose.
+
+**Secrets are still in `identity.json`.** `python3 humanize.py doctor --fix` moves them.
+
 ## The backup
 
-**"No self key".** Set `HUMANIZE_SELF_KEY`, or restore `~/.humanize/self.key`. A new key would make every earlier push unreadable, so none is ever invented on a push.
+**"No self key".** Set `HUMANIZE_SELF_KEY`, or restore it into the secret store. On older installs it was `~/.humanize/self.key`. A new key would make every earlier push unreadable, so none is ever invented on a push.
 
 **"Decrypt failed: wrong self key, or the file was modified".** The key is wrong or the file changed. If the key is lost, the backup cannot be recovered.
 

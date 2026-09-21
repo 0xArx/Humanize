@@ -4,7 +4,7 @@
 **Human needed:** a git remote and a token (see Layer 6), and to keep the self key. **Cost:** free.
 **Identity keys:** `self_repo.url`, `self_repo.last_push`
 
-Stored in the repo: the identity file (encrypted), the local memory (encrypted), the avatar, and a copy of the Humanize scripts. The identity and memory are encrypted with AES-256 and a key stretched from the **self key** with 200,000 rounds of PBKDF2, and sealed with an HMAC so a wrong key or a tampered file is refused before anything is decrypted. The repo should be private on top of that.
+Stored in the repo: the identity file, the secrets it points at, and the local memory (all encrypted), the avatar, and a copy of the Humanize scripts. The encrypted parts are sealed with AES-256 and a key stretched from the **self key** with 200,000 rounds of PBKDF2, and sealed with an HMAC so a wrong key or a tampered file is refused before anything is decrypted. The repo should be private on top of that.
 
 ## Set it up
 
@@ -21,7 +21,7 @@ python3 humanize.py self status
 
 The token is used through the environment for the git call only. It never appears in the process list or in `.git/config`. If `GITHUB_TOKEN` is unset, `accounts.github.token` in the identity file is used, then whatever git already has (a credential helper or SSH).
 
-**Hand the self key to the human once, in the chat.** It is saved on this machine at `~/.humanize/self.key` (mode 600), never written into the identity file, and cannot be recovered. Without it the repo is an unreadable blob, and there is no way to load the agent elsewhere.
+**Hand the self key to the human once, in the chat.** It is saved in this machine's secret store (the macOS Keychain, or the Linux keyring) so pushes run unattended, is never written into the identity file, and cannot be recovered. Where there is no secret store it falls back to `~/.humanize/self.key` (mode 600). Without it the repo is an unreadable blob, and there is no way to load the agent elsewhere.
 
 ## Keep it current
 
@@ -41,6 +41,6 @@ HUMANIZE_SELF_KEY=<self key> python3 ~/.humanize/self/scripts/self.py unlock
 python3 ~/.humanize/self/humanize.py init
 ```
 
-Same name, inbox, number, accounts, avatar, memory and rules. On a machine that already has Humanize, `python3 humanize.py self load <repo url>` does the clone and unlock together.
+Same name, inbox, number, accounts, avatar, memory and rules, and every secret is restored into the new machine's own secret store. On a machine that already has Humanize, `python3 humanize.py self load <repo url>` does the clone and unlock together.
 
 `self pull` catches an existing machine up with pushes made elsewhere. It refuses to overwrite local changes that were never pushed; use `--force` only if you mean to discard them.

@@ -52,6 +52,9 @@ class _Locked:
         _thread_lock.release()
 
 
+locked = _Locked   # public name for code outside this module that needs the same lock
+
+
 def load(path):
     path = Path(path)
     if not path.exists():
@@ -136,6 +139,12 @@ def is_secret_key(key):
     if "public" in k:
         return False
     return bool(_SECRET.search(k))
+
+
+def is_vaultable_key(key):
+    """Keys whose values belong in the operating system's secret store rather than in a plain file."""
+    k = str(key).lower()
+    return is_secret_key(k) and k != "auth"     # `auth` holds a file path, not a secret
 
 
 def _hide(v):

@@ -114,7 +114,7 @@ Same name, inbox, number, accounts, avatar, memory and rules. The identity and m
 
 ## Security
 
-The dashboard can run a command on your machine (the Open chat button), so it treats every request as hostile: it binds to `127.0.0.1`, serves the page only to a browser holding your access key, answers only requests addressed to itself, refuses anything that came from another website, needs a per-run token on every call, validates and size-limits input, and runs under a strict content security policy. Secrets never reach the browser. The backup is encrypted, and a wrong key or a tampered file is refused before anything is decrypted. Details and limits are in [SECURITY.md](SECURITY.md).
+The dashboard can run a command on your machine (the Open chat button), so it treats every request as hostile: it binds to `127.0.0.1`, serves the page only to a browser holding your access key, answers only requests addressed to itself, refuses anything that came from another website, needs a per-run token on every call, validates and size-limits input, and runs under a strict content security policy. Secrets never reach the browser, and they don't sit in the identity file either: the few the agent needs go in the macOS Keychain (or the Linux keyring), and everything else in the Mailgent vault. The backup is encrypted, and a wrong key or a tampered file is refused before anything is decrypted. Details and limits are in [SECURITY.md](SECURITY.md).
 
 ## How far this has been verified
 

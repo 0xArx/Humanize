@@ -16,7 +16,8 @@ The self key is the one thing the human keeps. Without it the repo is just an un
 
 Environment
   HUMANIZE_HOME       data folder (default ~/.humanize)
-  HUMANIZE_SELF_KEY   the self key; otherwise it is read from $HUMANIZE_HOME/self.key (mode 600)
+  HUMANIZE_SELF_KEY   the self key; otherwise it is read from the secret store (the macOS Keychain, the system
+                      keyring, or a private file), then from $HUMANIZE_HOME/self.key on older installs
   GITHUB_TOKEN        used to authenticate to github.com; otherwise accounts.github.token from the
                       identity file; otherwise whatever git already has (credential helper, SSH)
 """
@@ -37,8 +38,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 try:
     import store
+    import keystore
 except ImportError:  # self.py copied on its own
-    store = None
+    store = keystore = None
+SELF_KEY_NAME = "_hz.self-key"
 
 HOME = Path(os.environ.get("HUMANIZE_HOME") or os.path.expanduser("~/.humanize"))
 IDENTITY = HOME / "identity.json"
@@ -93,17 +96,34 @@ def key(create=False):
     k = os.environ.get("HUMANIZE_SELF_KEY")
     if k:
         return k
+    if keystore and IDENTITY.exists():
+        try:
+            k = keystore.get(SELF_KEY_NAME)
+        except keystore.KeystoreError:
+            k = None
+        if k:
+            return k
     if KEYFILE.exists():
         return KEYFILE.read_text().strip()
     if not create:
-        die("No self key. Set HUMANIZE_SELF_KEY, or restore " + str(KEYFILE))
+        die("No self key. Set HUMANIZE_SELF_KEY, or restore it: it lives in the secret store (or " + str(KEYFILE) + " on older installs).")
     k = secrets.token_urlsafe(32)
-    HOME.mkdir(parents=True, exist_ok=True)
-    fd = os.open(str(KEYFILE), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(k)
+    where = None
+    if keystore and IDENTITY.exists():
+        try:
+            keystore.put(SELF_KEY_NAME, k)
+            where = keystore.label()
+        except keystore.KeystoreError:
+            where = None
+    if where is None:
+        HOME.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(KEYFILE), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(k)
+        where = str(KEYFILE)
     print("\nNEW SELF KEY. Give this to the human once and keep it somewhere safe.\n"
-          "It is the only way to load this agent on another machine, and it cannot be recovered:\n\n  " + k + "\n")
+          "It is the only way to load this agent on another machine, and it cannot be recovered.\n"
+          f"It is also saved in {where} so pushes can run unattended:\n\n  " + k + "\n")
     return k
 
 
@@ -114,14 +134,33 @@ def read_identity():
     return IDENTITY.read_bytes()
 
 
-def fingerprint(raw=None):
-    """Hash of the identity without the self_repo bookkeeping, so pushing does not count as a change."""
+def secret_bundle(identity):
+    """The secrets the identity points at, as this machine has them."""
+    if not keystore:
+        return {}
+    out = {}
+    for name in sorted(keystore.collect_pointers(identity)):
+        try:
+            v = keystore.get(name)
+        except keystore.KeystoreError:
+            v = None
+        if v is not None:
+            out[name] = v
+    return out
+
+
+def fingerprint(raw=None, with_secrets=True):
+    """Hash of the identity (without the self_repo bookkeeping) and of its secrets, so that pushing does not
+    count as a change but rotating a key does."""
     try:
         d = json.loads(raw if raw is not None else read_identity())
     except ValueError:
         return None
     d.pop("self_repo", None)
-    return hashlib.sha256(json.dumps(d, sort_keys=True).encode()).hexdigest()
+    body = {"identity": d}
+    if with_secrets:
+        body["secrets"] = {n: hashlib.sha256(v.encode()).hexdigest() for n, v in secret_bundle(d).items()}
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
 
 def read_state():
@@ -162,7 +201,8 @@ def token():
     if t:
         return t
     try:
-        return json.loads(IDENTITY.read_text()).get("accounts", {}).get("github", {}).get("token")
+        t = json.loads(IDENTITY.read_text()).get("accounts", {}).get("github", {}).get("token")
+        return keystore.resolve(t) if keystore and t else t
     except Exception:
         return None
 
@@ -189,6 +229,12 @@ def stage(k):
     REPO.mkdir(parents=True, exist_ok=True)
     raw = read_identity()
     (REPO / "identity.json.enc").write_bytes(seal(raw, k))
+    bundle = secret_bundle(json.loads(raw))
+    senc = REPO / "secrets.json.enc"
+    if bundle:
+        senc.write_bytes(seal(json.dumps(bundle, sort_keys=True).encode(), k))
+    elif senc.exists():
+        senc.unlink()
     if FACE.exists():
         shutil.copyfile(FACE, REPO / "face.png")
     mem = HOME / "memory.db"
@@ -208,7 +254,7 @@ def stage(k):
         if (HERE.parent / f).exists():
             shutil.copyfile(HERE.parent / f, REPO / f)
     (REPO / "README.md").write_text(
-        "# self\n\nA Humanize agent. `identity.json.enc` is encrypted with the self key; nothing else here is secret.\n\n"
+        "# self\n\nA Humanize agent. `identity.json.enc`, `secrets.json.enc` and `memory.db.enc` are encrypted with the self key; nothing else here is secret.\n\n"
         "Load it on a new machine (needs git, Python 3 and the self key):\n\n"
         "```bash\ngit clone <this repo> ~/.humanize/self\n"
         "HUMANIZE_SELF_KEY=<self key> python3 ~/.humanize/self/scripts/self.py unlock\n"
@@ -255,7 +301,7 @@ def unlock(force):
     if not enc.exists():
         die(f"{enc} not found")
     raw = unseal(enc.read_bytes(), key())
-    if IDENTITY.exists() and not force and fingerprint() != fingerprint(raw):
+    if IDENTITY.exists() and not force and fingerprint(with_secrets=False) != fingerprint(raw, with_secrets=False):
         die(f"{IDENTITY} already exists and differs. Use --force to replace it (the old one is kept as identity.json.bak).")
     HOME.mkdir(parents=True, exist_ok=True)
     os.chmod(HOME, 0o700)
@@ -270,7 +316,13 @@ def unlock(force):
     if menc.exists() and (force or not (HOME / "memory.db").exists()):
         (HOME / "memory.db").write_bytes(unseal(menc.read_bytes(), key()))
         os.chmod(HOME / "memory.db", 0o600)
-    write_state(pushed_fp=fingerprint(raw))
+    senc = REPO / "secrets.json.enc"
+    if senc.exists():
+        if not keystore:
+            die("this backup holds secrets but keystore.py is missing")
+        for name, value in json.loads(unseal(senc.read_bytes(), key())).items():
+            keystore.put(name, value)
+    write_state(pushed_fp=fingerprint())
     print("identity written to", IDENTITY)
 
 

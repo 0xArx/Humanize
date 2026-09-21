@@ -69,21 +69,45 @@ class SelfStorageTests(HomeCase):
         self.assertIn("modified", r.stdout + r.stderr)
 
     def test_push_without_a_key_does_not_invent_one(self):
-        self.selfpy("init", str(self.bare), env={"HUMANIZE_SELF_KEY": ""})   # creates the key file
-        (self.home / "self.key").unlink()
+        self.selfpy("init", str(self.bare), env={"HUMANIZE_SELF_KEY": ""})   # creates the key in the secret store
+        (self.home / "secrets.json").unlink()                                 # ... and now it is lost
         r = self.selfpy("push", check=False, env={"HUMANIZE_SELF_KEY": ""})
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("No self key", r.stdout + r.stderr)
-        self.assertFalse((self.home / "self.key").exists(), "a new key would make earlier pushes unreadable")
+        self.assertFalse((self.home / "secrets.json").exists(), "a new key would make earlier pushes unreadable")
+        self.assertFalse((self.home / "self.key").exists())
 
-    def test_first_init_creates_and_prints_a_key_once(self):
+    def test_first_init_creates_and_prints_a_key_once_and_keeps_it_in_the_secret_store(self):
         env = {"HUMANIZE_SELF_KEY": ""}
         r = self.selfpy("init", str(self.bare), env=env)
         self.assertIn("NEW SELF KEY", r.stdout)
-        keyfile = self.home / "self.key"
-        self.assertEqual(oct(keyfile.stat().st_mode & 0o777), "0o600")
-        self.assertIn(keyfile.read_text().strip(), r.stdout)
-        self.assertNotIn("NEW SELF KEY", self.selfpy("push", env=env).stdout)
+        stored = self.hz("secret", "get", "_hz.self-key").stdout.strip()
+        self.assertIn(stored, r.stdout)
+        self.assertFalse((self.home / "self.key").exists(), "no plain key file when a secret store exists")
+        self.assertEqual(oct((self.home / "secrets.json").stat().st_mode & 0o777), "0o600")
+        self.assertNotIn("NEW SELF KEY", self.selfpy("push", env=env).stdout, "the second push finds the key itself")
+
+    def test_secrets_travel_in_the_backup_and_come_back_in_the_new_machines_store(self):
+        self.hz("set", "phone.agentphone.api_key", "ap_live_SUPERSECRET42")
+        self.assertNotIn("SUPERSECRET42", self.identity.read_text())
+        self.selfpy("init", str(self.bare))
+        for path in (self.home / "self").rglob("*"):
+            if path.is_file() and ".git" not in path.parts:
+                self.assertNotIn(b"SUPERSECRET42", path.read_bytes(), str(path))
+        self.assertTrue((self.home / "self" / "secrets.json.enc").exists())
+        clone = self.tmp / "machine2"
+        self.selfpy("load", str(self.bare), home=clone)
+        e = dict(self.env, HUMANIZE_HOME=str(clone))
+        got = subprocess.run([sys.executable, str(ROOT / "humanize.py"), "get", "phone.agentphone.api_key"], capture_output=True, text=True, env=e)
+        self.assertEqual(got.stdout.strip(), "ap_live_SUPERSECRET42")
+        self.assertNotIn("SUPERSECRET42", (clone / "identity.json").read_text())
+
+    def test_rotating_a_secret_counts_as_an_unpushed_change(self):
+        self.hz("set", "phone.agentphone.api_key", "first-value-0000")
+        self.selfpy("init", str(self.bare))
+        self.assertFalse(json.loads(self.selfpy("status").stdout)["unpushed_changes"])
+        self.hz("set", "phone.agentphone.api_key", "second-value-1111")
+        self.assertTrue(json.loads(self.selfpy("status").stdout)["unpushed_changes"], "the pointer is unchanged but the secret is not")
 
     def test_pull_refuses_to_discard_unpushed_work(self):
         self.selfpy("init", str(self.bare))

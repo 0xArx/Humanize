@@ -4,7 +4,10 @@
 **Human needed:** none. **Cost:** included with Mailgent.
 **Identity keys:** `accounts.<service>.vault` (a pointer to the entry name, never the secret)
 
-The Mailgent vault from Layer 1 is the store (encrypted at rest with AES-256-GCM) and it also produces one time codes.
+There are two places, and each secret has exactly one:
+
+- **The Mailgent vault** holds passwords, 2FA secrets, recovery codes, account tokens and extra wallet keys. It is encrypted at rest with AES-256-GCM and it also produces one time codes.
+- **The machine's secret store** (the macOS Keychain, the Linux keyring, or a private file where neither exists) holds the few keys the agent needs to reach the vault and its own services: the Mailgent, AgentMail and AgentPhone API keys, and the self key. `python3 humanize.py set <path> <value>` puts a secret-looking key there automatically and leaves only a pointer in the identity file; `python3 humanize.py get <path>` fetches it. Use `secret list` to see what is stored.
 
 ```bash
 # any credential
@@ -25,6 +28,6 @@ When a service offers an authenticator app, take the setup secret from its page 
 
 Generate passwords with `openssl rand -base64 24`, one per service, never reused.
 
-The identity file keeps only a pointer, for example `accounts.github.vault = "github"`, so the file can be shown or shared without leaking anything.
+The identity file keeps only pointers, for example `accounts.github.vault = "github"` or `secret:email.mailgent.api_key`, so the file can be shown or shared without leaking anything. The encrypted backup carries the secret store's contents too, so loading the agent on a new machine restores them into that machine's store.
 
 > Status (2026-09-21): the vault commands and the `totp` and `totp-use-backup` commands are in the Mailgent CLI's source. The `--data` field name for a TOTP entry (`secret`) is not documented; if the first `vault totp` call errors, the error names the field it wants.

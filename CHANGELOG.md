@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0] - 2026-09-21
+
+### Added
+- Secrets no longer sit in the identity file. Keys that look like secrets are stored in the macOS Keychain (or the Linux keyring, or a private file where neither exists) and replaced by pointers. `humanize.py get` fetches them, `set` stores them, and `secret list|get|set|delete|migrate|backend` manage them.
+- The self key lives in the same store. The encrypted backup now carries the secrets and restores them on a new machine.
+- `doctor` warns about plain-text secrets and missing ones, and `--fix` migrates them.
+
+### Fixed
+- Local calls no longer go through a system proxy, the server no longer waits on a reverse DNS lookup, and `set` keeps text as text.
+
 ## [0.1.0] - 2026-09-21
 
 First release.

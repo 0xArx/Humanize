@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+import keystore  # noqa: E402
 import store  # noqa: E402
 
 
@@ -20,14 +21,16 @@ class HomeCase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="hz-test-"))
         self.home = self.tmp / "home"
-        self.env = dict(os.environ, HUMANIZE_HOME=str(self.home), HOME=str(self.tmp), HUMANIZE_NO_BROWSER="1")
+        self.env = dict(os.environ, HUMANIZE_HOME=str(self.home), HOME=str(self.tmp), HUMANIZE_NO_BROWSER="1", HUMANIZE_KEYSTORE="file")
         os.environ["HUMANIZE_HOME"] = str(self.home)  # for in-process use of store
+        os.environ["HUMANIZE_KEYSTORE"] = "file"      # tests never touch a real Keychain
         self.addCleanup(self.cleanup)
 
     def cleanup(self):
         self.hz("stop", check=False)
         shutil.rmtree(self.tmp, ignore_errors=True)
         os.environ.pop("HUMANIZE_HOME", None)
+        os.environ.pop("HUMANIZE_KEYSTORE", None)
 
     def hz(self, *args, check=True, input=None, env=None):
         r = subprocess.run([sys.executable, str(ROOT / "humanize.py"), *args], capture_output=True, text=True,

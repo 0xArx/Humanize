@@ -29,11 +29,12 @@ Nothing here is a server you deploy. The dashboard is a small standard-library H
 
 | File | What it is | Mode |
 |------|------------|------|
-| `identity.json` | Everything the agent owns. Schema is `identity.template.json`. | 600 |
+| `identity.json` | Everything the agent owns, with pointers instead of secrets. Schema is `identity.template.json`. | 600 |
+| `secrets.json` | The secret store's fallback where there is no Keychain or keyring. Plain text. | 600 |
 | `identity.json.bak` | The previous version, kept on every write. | 600 |
 | `memory.db` | Notes and people, SQLite with full-text search. | 600 |
 | `face.png` | The avatar, drawn from `face.seed`. | 644 |
-| `self.key` | The self key, so unattended pushes work. | 600 |
+| `self.key` | The self key on older installs and where there is no secret store. Otherwise the key is in the secret store. | 600 |
 | `self/` | The working copy of the backup repo. | |
 | `self.state.json` | The fingerprint of what was last pushed. | 600 |
 | `dashboard.key` | The owner's access key for the dashboard, stable across restarts. | 600 |
@@ -52,7 +53,7 @@ One JSON object. The template lists every key, empty. Groups:
 - Control: `layers.<n>.enabled`, `rules`, `dashboard_requests`, `host`, `self_repo`.
 - Record: `log`, capped at 1000 entries.
 
-Service API keys live here. Passwords, TOTP secrets and account tokens live in the Mailgent vault with a pointer here.
+Secrets are not stored here. A key that looks like a secret is moved to the secret store and replaced by a pointer such as `secret:email.mailgent.api_key`; `humanize.py get` resolves it. Passwords, TOTP secrets and account tokens live in the Mailgent vault with a pointer here.
 
 ## Concurrency
 
@@ -82,6 +83,6 @@ The page polls `/api/identity` every three seconds and re-renders when the file'
 
 ## The backup
 
-`self.py` writes `identity.json.enc` and, if present, `memory.db.enc` (a consistent SQLite snapshot). File format: `HZ1` + the output of `openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt` + a 32 byte HMAC-SHA256 over everything before it. The AES key comes from openssl's PBKDF2 over the self key; the HMAC key is a separate PBKDF2 derivation with a fixed domain-separation salt. The repo also carries a copy of `scripts/`, `humanize.py`, the template, and the avatar, so a machine can boot from the backup alone.
+`self.py` writes `identity.json.enc`, `secrets.json.enc` (the secrets the identity points at) and, if present, `memory.db.enc` (a consistent SQLite snapshot). `unlock` restores the secrets into the new machine's store. File format: `HZ1` + the output of `openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt` + a 32 byte HMAC-SHA256 over everything before it. The AES key comes from openssl's PBKDF2 over the self key; the HMAC key is a separate PBKDF2 derivation with a fixed domain-separation salt. The repo also carries a copy of `scripts/`, `humanize.py`, the template, and the avatar, so a machine can boot from the backup alone.
 
-Sync state is a fingerprint (SHA-256 of the identity without `self_repo`) stored in `self.state.json`. It is what lets the dashboard show "unpushed changes" and lets `pull` refuse to discard them.
+Sync state is a fingerprint (SHA-256 of the identity without `self_repo`, plus a hash of each secret, so rotating a key counts as a change) stored in `self.state.json`. It is what lets the dashboard show "unpushed changes" and lets `pull` refuse to discard them.

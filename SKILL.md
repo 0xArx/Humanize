@@ -23,7 +23,7 @@ At the start of every turn, and after every provisioning step (details in [Layer
 
 Everything the agent owns lives in `~/.humanize/identity.json` (mode 600). Never edit it by hand: the dashboard writes to it too. Use `get`, `set`, `log`, `requests` and `done`, which lock the file so no edit is lost. `set` keeps text as text and parses booleans and lists where a key expects them (`set rules '["no spend over 50"]'`, `set layers.14.enabled false`); it refuses a value of the wrong type, and `--json` forces JSON. `identity.template.json` lists every key.
 
-Service keys the agent needs to keep working (the Mailgent and AgentPhone API keys) live in the identity file, which is encrypted in every backup. Passwords, TOTP secrets and account tokens go in the vault ([Layer 13](layers/13-keys-2fa.md)) with only a pointer in the identity file.
+Secrets never sit in that file. `set` sends any key that looks like a secret (`api_key`, `token`, `password`, `privateKey` and so on) to the machine's secret store, the macOS Keychain or the Linux keyring, and leaves a pointer such as `secret:email.mailgent.api_key` behind. `get` fetches the real value for you, so nothing else changes. Passwords, 2FA secrets and account tokens go in the Mailgent vault ([Layer 13](layers/13-keys-2fa.md)). That leaves one small set of keys in the secret store: the ones the agent needs to reach the vault and its services. `python3 humanize.py secret list` shows what is stored, and `doctor` warns if anything is left as plain text.
 
 ## Choosing a provider
 

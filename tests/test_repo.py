@@ -74,7 +74,7 @@ class LinkTests(unittest.TestCase):
 
     def test_files_named_in_backticks_exist(self):
         wanted = {"humanize.py", "install.sh", "identity.template.json", "scripts/dashboard.py", "scripts/dashboard.html", "scripts/orb.js",
-                  "scripts/store.py", "scripts/self.py", "scripts/avatar.py", "scripts/memory.py", "SECURITY.md", "CHANGELOG.md",
+                  "scripts/store.py", "scripts/keystore.py", "scripts/self.py", "scripts/avatar.py", "scripts/memory.py", "SECURITY.md", "CHANGELOG.md",
                   "docs/architecture.md", "docs/providers.md", "docs/troubleshooting.md", "AGENTS.md", "LICENSE", "CONTRIBUTING.md"}
         for w in sorted(wanted):
             self.assertTrue((ROOT / w).exists(), w)
@@ -125,7 +125,7 @@ class HygieneTests(unittest.TestCase):
     def test_python_files_are_standard_library_only(self):
         import ast, sys
         std = set(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names") else None
-        local = {"store", "memory", "avatar", "helpers", "dashboard", "self", "orb"}
+        local = {"store", "keystore", "memory", "avatar", "helpers", "dashboard", "self", "orb"}
         optional = {"PIL", "fcntl"}
         for p in list(ROOT.glob("*.py")) + list((ROOT / "scripts").glob("*.py")):
             for node in ast.walk(ast.parse(p.read_text())):

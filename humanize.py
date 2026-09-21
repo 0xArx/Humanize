@@ -18,9 +18,12 @@
   memory person NAME [--handle H] [--notes N]   add or update someone it has met
   memory people                             who it knows
 
+  secret backend|list|get|set|delete|migrate   the operating system's secret store (Keychain on macOS)
+
   For the agent, so it never hand-edits the identity file:
-  get PATH                   print one value, e.g. get email.agentmail.address
-  set PATH VALUE [--log T]   write one value; text stays text, lists, objects and booleans are parsed where the key expects them (--json forces JSON)
+  get PATH [--pointer]       print one value, e.g. get email.agentmail.address; a stored secret is fetched for you
+  set PATH VALUE [--log T]   write one value; keys that hold secrets (api_key, token, password ...) go to the
+                             secret store and leave a pointer in the identity (--plain keeps them in the file); text stays text, lists, objects and booleans are parsed where the key expects them (--json forces JSON)
   log TEXT [--cost C]        append to the activity log
   requests [--all]           pending requests the human typed into the dashboard, as JSON
   done INDEX                 mark a request finished
@@ -51,9 +54,10 @@ ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / "scripts"
 TEMPLATE = ROOT / "identity.template.json"
 sys.path.insert(0, str(SCRIPTS))
+import keystore  # noqa: E402
 import store  # noqa: E402
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 LAYERS = range(0, 24)
 
 FIRST = ["Ari", "Mira", "Tomas", "Noor", "Iris", "Kai", "Lena", "Omar", "Sana", "Jude", "Nadia", "Rafi", "Elio", "Zara", "Idris", "Maya"]
@@ -313,6 +317,23 @@ def cmd_doctor(a):
                 row("ok", "identity has every key this version knows")
         except store.StoreError as e:
             row("fail", str(e))
+    b = keystore.backend()
+    row("ok" if b != "file" else "warn", f"secrets are kept in {keystore.label()}")
+    if ident_path().exists():
+        try:
+            d = store.load(ident_path())
+            plain = keystore.find_plaintext(d)
+            if plain:
+                row("warn", f"{len(plain)} secret(s) sit in identity.json as plain text" + ("" if a.fix else " (run doctor --fix, or `humanize.py secret migrate`)"))
+                if a.fix:
+                    print("        moved:", ", ".join(keystore.migrate(ident_path())))
+            missing = [n for n in sorted(keystore.collect_pointers(d)) if keystore.get(n) is None]
+            if missing:
+                row("warn", f"{len(missing)} pointer(s) refer to secrets this machine does not have: {', '.join(missing[:4])}. Load the backup with the self key to restore them.")
+            elif keystore.collect_pointers(d):
+                row("ok", f"{len(keystore.collect_pointers(d))} secret(s) present in the store")
+        except (store.StoreError, keystore.KeystoreError) as e:
+            row("fail", str(e))
     info = dash_alive()
     row("ok" if info else "warn", f"dashboard running at http://127.0.0.1:{info['port']} (pid {info['pid']})" if info else "dashboard not running; `python3 humanize.py init` starts it")
     print(f"\n{fails} problem(s), {warns} warning(s)")
@@ -369,6 +390,11 @@ def cmd_get(a):
     v = store.get(load_identity(), a.path)
     if v is None:
         sys.exit(1)
+    if not a.pointer:
+        try:
+            v = keystore.resolve(v)
+        except keystore.KeystoreError as e:
+            die(str(e))
     print(v if isinstance(v, str) else json.dumps(v))
 
 
@@ -406,6 +432,15 @@ def cmd_set(a):
         value = coerce(a.path, a.value, a.json)
     except store.StoreError as e:
         die(str(e))
+    where = None
+    wants_secret = a.secret or (not a.plain and store.is_vaultable_key(a.path.split(".")[-1]))
+    if wants_secret and isinstance(value, str) and value and not keystore.is_pointer(value):
+        try:
+            keystore.namespace()                     # before the write below, never inside it
+            keystore.put(a.path, value)
+            value, where = keystore.pointer(a.path), keystore.label()
+        except keystore.KeystoreError as e:
+            die(str(e))
 
     def apply(d):
         store.set_path(d, a.path, value)
@@ -415,6 +450,8 @@ def cmd_set(a):
         store.update(ident_path(), apply)
     except store.StoreError as e:
         die(str(e))
+    if where:
+        sys.stderr.write(f"{a.path} is stored in {where}; the identity file holds a pointer.\n")
 
 
 def cmd_log(a):
@@ -468,6 +505,30 @@ def cmd_memory(a):
     if ident_path().exists() and not store.get(load_identity(), "memory.local"):
         store.update(ident_path(), lambda d: store.set_path(d, "memory.local", str(memory.db_path())))
     print(json.dumps(out, indent=2))
+
+
+def cmd_secret(a):
+    try:
+        if a.scmd == "backend":
+            print(f"{keystore.backend()}: {keystore.label()}")
+        elif a.scmd == "list":
+            names = sorted(keystore.collect_pointers(load_identity()))
+            print(json.dumps([{"name": n, "present": keystore.get(n) is not None} for n in names], indent=2))
+        elif a.scmd == "get":
+            v = keystore.get(a.name)
+            if v is None:
+                sys.exit(1)
+            print(v)
+        elif a.scmd == "set":
+            keystore.put(a.name, a.value)
+            print(keystore.pointer(a.name))
+        elif a.scmd == "delete":
+            keystore.delete(a.name)
+        else:
+            moved = keystore.migrate(ident_path())
+            print(json.dumps({"moved": moved, "store": keystore.label()}, indent=2))
+    except keystore.KeystoreError as e:
+        die(str(e))
 
 
 def cmd_demo(a):
@@ -524,12 +585,21 @@ def main():
     p = add("avatar", cmd_avatar); p.add_argument("seed", nargs="?")
     p = add("self", cmd_self); p.add_argument("args", nargs=argparse.REMAINDER)
     p = add("demo", cmd_demo); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
-    p = add("get", cmd_get); p.add_argument("path")
+    p = add("get", cmd_get); p.add_argument("path"); p.add_argument("--pointer", action="store_true", help="print the pointer, not the secret")
     p = add("set", cmd_set); p.add_argument("path"); p.add_argument("value"); p.add_argument("--log"); p.add_argument("--json", action="store_true", help="parse VALUE as JSON whatever the key")
+    p.add_argument("--secret", action="store_true", help="store VALUE in the secret store whatever the key")
+    p.add_argument("--plain", action="store_true", help="keep VALUE in the identity file even if the key looks secret")
     p = add("log", cmd_log); p.add_argument("text"); p.add_argument("--cost")
     p = add("requests", cmd_requests); p.add_argument("--all", action="store_true")
     p = add("done", cmd_done); p.add_argument("index", type=int)
     add("chat", cmd_chat)
+    p = add("secret", cmd_secret)
+    ssub = p.add_subparsers(dest="scmd", required=True)
+    for n in ("backend", "list", "migrate"):
+        ssub.add_parser(n)
+    m = ssub.add_parser("get"); m.add_argument("name")
+    m = ssub.add_parser("set"); m.add_argument("name"); m.add_argument("value")
+    m = ssub.add_parser("delete"); m.add_argument("name")
     p = add("memory", cmd_memory)
     msub = p.add_subparsers(dest="mcmd", required=True)
     m = msub.add_parser("add"); m.add_argument("text"); m.add_argument("--kind", default="note"); m.add_argument("--tags", default="")

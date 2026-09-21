@@ -24,6 +24,7 @@
   "entity": { "name": null },
   "verify": { "provider": null },
   "contacts": { "source": null, "table": null },
+  "keystore": { "ns": null },
   "self_repo": { "url": null, "last_push": null },
   "host": { "app": null, "open_command": null, "chat_url": null, "session_id": null },
   "layers": {},
