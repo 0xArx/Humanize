@@ -22,11 +22,15 @@ git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
 python3 ~/.humanize/app/humanize.py init --name "Ari Vale"
 ```
 
-or, with a token:
+or in one line, with a token that can read the repo (a fine-grained token with Contents: read is enough):
 
 ```bash
-GITHUB_TOKEN=<token that can read the repo> sh install.sh --name "Ari Vale"
+export GITHUB_TOKEN=<token>
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" \
+  https://api.github.com/repos/0xArx/Humanize/contents/install.sh | sh -s -- --name "Ari Vale"
 ```
+
+The token is used for the clone only. It is passed through the environment, so it never appears in the process list or in `.git/config`.
 
 `init` creates the identity, draws the avatar, works out which app your agent chats in, starts the dashboard in the background and opens it. It takes a few seconds and is safe to run again. The installer also links the folder into `~/.claude/skills/humanize` when Claude Code is installed.
 
