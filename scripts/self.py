@@ -191,6 +191,18 @@ def stage(k):
     (REPO / "identity.json.enc").write_bytes(seal(raw, k))
     if FACE.exists():
         shutil.copyfile(FACE, REPO / "face.png")
+    mem = HOME / "memory.db"
+    if mem.exists() and mem.stat().st_size <= 20 * 1024 * 1024:  # consistent snapshot, then encrypt
+        import sqlite3
+        fd, tmp = tempfile.mkstemp()
+        os.close(fd)
+        try:
+            src, dst = sqlite3.connect(str(mem)), sqlite3.connect(tmp)
+            src.backup(dst)
+            src.close(); dst.close()
+            (REPO / "memory.db.enc").write_bytes(seal(Path(tmp).read_bytes(), k))
+        finally:
+            os.unlink(tmp)
     shutil.copytree(HERE, REPO / "scripts", dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.lock"))
     for f in ("humanize.py", "identity.template.json"):
         if (HERE.parent / f).exists():
@@ -254,6 +266,10 @@ def unlock(force):
         os.chmod(IDENTITY, 0o600)
     if (REPO / "face.png").exists():
         shutil.copyfile(REPO / "face.png", FACE)
+    menc = REPO / "memory.db.enc"
+    if menc.exists() and (force or not (HOME / "memory.db").exists()):
+        (HOME / "memory.db").write_bytes(unseal(menc.read_bytes(), key()))
+        os.chmod(HOME / "memory.db", 0o600)
     write_state(pushed_fp=fingerprint(raw))
     print("identity written to", IDENTITY)
 

@@ -9,12 +9,16 @@ hides secrets before they reach the browser, and runs host.open_command for the 
 Because this server can run a command on your machine, it defends itself:
   * only answers requests whose Host is 127.0.0.1, localhost or [::1] on its own port (DNS rebinding)
   * rejects requests whose Origin or Sec-Fetch-Site says they came from another site (CSRF)
+  * the page itself is only served to a browser that holds the owner's access key (a 0600 file), so
+    another user on the same machine cannot fetch it and lift the token
   * every /api call needs a per-run random token that is only handed to the page it serves
   * POST bodies must be application/json and are size capped and type validated
   * strict Content-Security-Policy with a per-response nonce, no inline event handlers, no third parties
 """
 import argparse
 import atexit
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -26,7 +30,7 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -77,6 +81,7 @@ def now():
 class Handler(BaseHTTPRequestHandler):
     identity = None      # Path
     token = ""
+    access_key = ""
     port = 0
     server_version = "Humanize"
     sys_version = ""
@@ -149,6 +154,22 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return body
 
+    def _cookie_value(self):
+        return hmac.new(self.access_key.encode(), b"hz-session-v1", hashlib.sha256).hexdigest()
+
+    def _session_ok(self):
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "hz" and secrets.compare_digest(v.encode(), self._cookie_value().encode()):
+                return True
+        return False
+
+    def _locked(self):
+        page = ("<!doctype html><meta charset=utf-8><title>Humanize</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem}"
+                "code{background:#0001;padding:2px 6px;border-radius:6px}</style><h1>Locked</h1>"
+                "<p>This dashboard only opens for its owner. From a terminal on this machine run:</p><p><code>python3 humanize.py open</code></p>")
+        self._send(401, page.encode(), "text/html; charset=utf-8", {"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'", "Cache-Control": "no-store"})
+
     def _csp(self, nonce):
         return ("default-src 'none'; script-src 'self' 'nonce-%s'; style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; "
@@ -161,6 +182,17 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/":
                 if not self._guard(need_token=False):
                     return
+                query = parse_qsl(urlsplit(self.path).query)
+                given = dict(query).get("k")
+                if given is not None:
+                    if not secrets.compare_digest(given.encode(), self.access_key.encode()):
+                        return self._locked()
+                    rest = urlencode([(k, v) for k, v in query if k != "k"])
+                    return self._send(302, b"", "text/plain", {
+                        "Location": "/" + ("?" + rest if rest else ""), "Cache-Control": "no-store",
+                        "Set-Cookie": f"hz={self._cookie_value()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7776000"})
+                if not self._session_ok():
+                    return self._locked()
                 nonce = secrets.token_urlsafe(16)
                 html = (HERE / "dashboard.html").read_text()
                 html = html.replace("__HZ_TOKEN__", self.token).replace("__HZ_NONCE__", nonce)
@@ -186,6 +218,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/avatar":
                 if not self._guard(need_token=False):
                     return
+                if not self._session_ok():
+                    return self._fail(401, "open the dashboard with: python3 humanize.py open")
                 return self._avatar()
             if path == "/api/identity":
                 if not self._guard():
@@ -347,6 +381,16 @@ def main():
 
     Handler.identity = Path(os.path.expanduser(a.identity)).resolve()
     Handler.token = secrets.token_urlsafe(32)
+    keyfile = Handler.identity.parent / "dashboard.key"
+    keyfile.parent.mkdir(parents=True, exist_ok=True)
+    if keyfile.exists() and keyfile.read_text().strip():
+        Handler.access_key = keyfile.read_text().strip()
+    else:
+        Handler.access_key = secrets.token_urlsafe(32)
+        fd = os.open(str(keyfile), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(Handler.access_key)
+    os.chmod(keyfile, 0o600)
     try:
         srv = Server(("127.0.0.1", a.port), Handler)
     except OSError as e:
@@ -371,7 +415,7 @@ def main():
     print(f"Humanize dashboard on {url}  (identity: {Handler.identity})", flush=True)
     if not a.no_open:
         try:
-            webbrowser.open(url)
+            webbrowser.open(f"{url}/?k={Handler.access_key}")
         except Exception:
             pass
     try:

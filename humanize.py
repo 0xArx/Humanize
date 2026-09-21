@@ -7,10 +7,16 @@
   status                     what the agent is and whether the dashboard is up
   doctor [--fix]             check this machine and the install; --fix adds keys new versions need
   dashboard [--port N]       run the dashboard in the foreground
+  open                       open the dashboard in your browser (starts it if needed)
   stop                       stop the background dashboard
   avatar [seed]              (re)draw the avatar PNG
   self <init|push|pull|load|unlock|status> ...   keep the agent in a private git repo, load it anywhere
   demo                       a filled sample agent in a scratch folder, to see the dashboard
+
+  memory add TEXT [--kind K] [--tags T]     remember something (local SQLite, no account)
+  memory search QUERY [--limit N]           find it again
+  memory person NAME [--handle H] [--notes N]   add or update someone it has met
+  memory people                             who it knows
 
   For the agent, so it never hand-edits the identity file:
   get PATH                   print one value, e.g. get email.agentmail.address
@@ -126,6 +132,18 @@ def dash_alive():
     return info if info and ping(info["port"]) else None
 
 
+def open_in_browser(url):
+    """The dashboard only opens for its owner: the URL carries the access key from a 0600 file."""
+    try:
+        key = (home() / "dashboard.key").read_text().strip()
+    except OSError:
+        key = ""
+    try:
+        webbrowser.open(f"{url}/?k={key}" if key else url)
+    except Exception:
+        pass
+
+
 def start_dashboard(port, open_browser):
     info = dash_alive()
     if info:
@@ -145,16 +163,14 @@ def start_dashboard(port, open_browser):
                 die("the dashboard exited on start:\n  " + "\n  ".join(tail or ["(no output)"]))
             i = dash_info()
             if i and i.get("pid") == proc.pid and ping(i["port"]):
+                port = i["port"]
                 break
             time.sleep(0.1)
         else:
             die("the dashboard did not come up within 6 seconds; see " + str(home() / "dashboard.log"))
         url = f"http://127.0.0.1:{port}"
     if open_browser:
-        try:
-            webbrowser.open(url)
-        except Exception:
-            pass
+        open_in_browser(url)
     return url
 
 
@@ -290,6 +306,13 @@ def cmd_doctor(a):
     sys.exit(1 if fails else 0)
 
 
+def cmd_open(a):
+    info = dash_alive()
+    url = f"http://127.0.0.1:{info['port']}" if info else start_dashboard(4242, False)
+    open_in_browser(url)
+    print(url)
+
+
 def cmd_stop(a):
     info = dash_info()
     if not info:
@@ -387,6 +410,24 @@ def cmd_chat(a):
         die(json.loads(e.read() or b"{}").get("error", str(e)))
 
 
+def cmd_memory(a):
+    import memory
+    try:
+        if a.mcmd == "add":
+            out = {"id": memory.add(a.text, a.kind, a.tags)}
+        elif a.mcmd == "search":
+            out = memory.search(a.query, a.limit)
+        elif a.mcmd == "person":
+            out = {"id": memory.person(a.name, a.handle, a.notes)}
+        else:
+            out = memory.people()
+    except ValueError as e:
+        die(str(e))
+    if ident_path().exists() and not store.get(load_identity(), "memory.local"):
+        store.update(ident_path(), lambda d: store.set_path(d, "memory.local", str(memory.db_path())))
+    print(json.dumps(out, indent=2))
+
+
 def cmd_demo(a):
     demo = Path(os.path.expanduser("~/.humanize-demo"))
     demo.mkdir(parents=True, exist_ok=True)
@@ -436,6 +477,7 @@ def main():
     add("status", cmd_status)
     p = add("doctor", cmd_doctor); p.add_argument("--fix", action="store_true")
     p = add("dashboard", cmd_dashboard); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
+    add("open", cmd_open)
     add("stop", cmd_stop)
     p = add("avatar", cmd_avatar); p.add_argument("seed", nargs="?")
     p = add("self", cmd_self); p.add_argument("args", nargs=argparse.REMAINDER)
@@ -446,6 +488,12 @@ def main():
     p = add("requests", cmd_requests); p.add_argument("--all", action="store_true")
     p = add("done", cmd_done); p.add_argument("index", type=int)
     add("chat", cmd_chat)
+    p = add("memory", cmd_memory)
+    msub = p.add_subparsers(dest="mcmd", required=True)
+    m = msub.add_parser("add"); m.add_argument("text"); m.add_argument("--kind", default="note"); m.add_argument("--tags", default="")
+    m = msub.add_parser("search"); m.add_argument("query", nargs="?", default=""); m.add_argument("--limit", type=int, default=10)
+    m = msub.add_parser("person"); m.add_argument("name"); m.add_argument("--handle"); m.add_argument("--notes")
+    msub.add_parser("people")
     a = ap.parse_args()
     if not a.cmd:
         ap.print_help()

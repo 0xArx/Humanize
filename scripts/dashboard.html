@@ -306,11 +306,11 @@ const LAYERS = [
   { n: 4,  t: "Money",      d: "x402 wallet, other wallets, Stripe, a card.",                get: i => [["usdc base", g(i,"wallet.mailgent_base_usdc")], ["evm", g(i,"wallet.evm.address")], ["solana", g(i,"wallet.solana.address")], ["stripe", g(i,"accounts.stripe") ? "connected" : null], ["card", g(i,"card.status")]] },
   { n: 5,  t: "Browser",    d: "The browser it drives.",                                     get: i => [["browser", g(i,"browser.provider")]] },
   { n: 6,  t: "Accounts",   d: "Services it holds accounts on.",                             get: i => keys(i.accounts).map(k => [k, g(i,`accounts.${k}.username`) || g(i,`accounts.${k}.handle`) || "connected"]) },
-  { n: 7,  t: "Avatar",     d: "The mark it wears on every account.",                        get: i => [["file", g(i,"face.photo")], ["seed", g(i,"face.seed")]] },
+  { n: 7,  t: "Avatar",     d: "The mark it wears on every account.",                        get: i => [["file", String(g(i,"face.photo") || "").split("/").pop() || null], ["seed", g(i,"face.seed")]] },
   { n: 8,  t: "Voice",      d: "One voice on calls and voice notes.",                        get: i => [["agentphone", g(i,"voice.agentphone")], ["tts", g(i,"voice.tts")]] },
   { n: 9,  t: "Eyes",       d: "Search, read pages, weather, local businesses.",             get: i => [["search", g(i,"eyes.search")], ["weather", g(i,"eyes.weather")]] },
   { n: 10, t: "Computer",   d: "A machine of its own.",                                      get: i => [["provider", g(i,"computer.provider")], ["id", g(i,"computer.id")], ["ssh", g(i,"ssh.public_key") ? "key set" : null]] },
-  { n: 11, t: "Memory",     d: "Notes, people, and files it keeps.",                         get: i => [["database", g(i,"memory.supabase")], ["repo", g(i,"memory.repo")]] },
+  { n: 11, t: "Memory",     d: "Notes, people, and files it keeps.",                         get: i => [["local", g(i,"memory.local")], ["remote db", g(i,"memory.supabase")]] },
   { n: 12, t: "Brain",      d: "Extra models it can call.",                                  get: i => keys(i.brain).map(k => [k, "key set"]) },
   { n: 13, t: "Keys, 2FA",  d: "Vault and authenticator.",                                   get: i => [["vault", g(i,"email.mailgent.api_key") ? "mailgent" : null], ["entries", keys(i.accounts).filter(k => g(i,`accounts.${k}.vault`)).join(", ") || null]] },
   { n: 14, t: "Social",     d: "X, LinkedIn, Reddit, and more.",                             get: i => keys(i.social).map(k => [k, g(i,`social.${k}.handle`) ? "@" + g(i,`social.${k}.handle`) : "connected"]) },
@@ -506,7 +506,13 @@ async function pushSelf() { try { toast("Pushing"); await api("/api/self/push", 
 
 /* ---------- theme ---------- */
 function applyTheme(t) { document.documentElement.dataset.theme = t; $("#theme").textContent = t === "dark" ? "Light" : "Dark"; try { localStorage.setItem("hz-theme", t); } catch (e) {} }
-(function () { let t = "light"; try { t = localStorage.getItem("hz-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch (e) {} applyTheme(t); })();
+(function () {
+  let t = "light";
+  try { t = localStorage.getItem("hz-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch (e) {}
+  const q = new URLSearchParams(location.search).get("theme");   // ?theme=dark or ?theme=light overrides, for links and screenshots
+  if (q === "dark" || q === "light") t = q;
+  applyTheme(t);
+})();
 
 /* ---------- events (delegated: the page runs under a strict CSP with no inline handlers) ---------- */
 document.addEventListener("click", e => {

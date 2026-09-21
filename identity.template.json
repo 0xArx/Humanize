@@ -15,7 +15,7 @@
   "eyes": { "search": null, "weather": null },
   "computer": { "provider": null, "id": null },
   "ssh": { "public_key": null },
-  "memory": { "supabase": null, "repo": null },
+  "memory": { "local": null, "supabase": null, "repo": null },
   "brain": {},
   "social": {},
   "calendar": { "booking_url": null },
