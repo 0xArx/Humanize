@@ -20,7 +20,7 @@ class HomeCase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="hz-test-"))
         self.home = self.tmp / "home"
-        self.env = dict(os.environ, HUMANIZE_HOME=str(self.home), HOME=str(self.tmp))
+        self.env = dict(os.environ, HUMANIZE_HOME=str(self.home), HOME=str(self.tmp), HUMANIZE_NO_BROWSER="1")
         os.environ["HUMANIZE_HOME"] = str(self.home)  # for in-process use of store
         self.addCleanup(self.cleanup)
 

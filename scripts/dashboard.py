@@ -26,6 +26,7 @@ import secrets
 import signal
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -413,11 +414,10 @@ def main():
 
     url = f"http://127.0.0.1:{Handler.port}"
     print(f"Humanize dashboard on {url}  (identity: {Handler.identity})", flush=True)
-    if not a.no_open:
-        try:
-            webbrowser.open(f"{url}/?k={Handler.access_key}")
-        except Exception:
-            pass
+    if not a.no_open and not os.environ.get("HUMANIZE_NO_BROWSER"):
+        t = threading.Thread(target=lambda: webbrowser.open(f"{url}/?k={Handler.access_key}"), daemon=True)
+        t.start()
+        t.join(4)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

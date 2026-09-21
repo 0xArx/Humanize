@@ -39,6 +39,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 import webbrowser
@@ -138,10 +139,12 @@ def open_in_browser(url):
         key = (home() / "dashboard.key").read_text().strip()
     except OSError:
         key = ""
-    try:
-        webbrowser.open(f"{url}/?k={key}" if key else url)
-    except Exception:
-        pass
+    if os.environ.get("HUMANIZE_NO_BROWSER"):   # tests, CI and headless servers
+        return
+    target = f"{url}/?k={key}" if key else url
+    t = threading.Thread(target=lambda: webbrowser.open(target), daemon=True)   # some platforms block until a GUI app starts
+    t.start()
+    t.join(4)
 
 
 def start_dashboard(port, open_browser):

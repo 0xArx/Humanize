@@ -182,7 +182,7 @@ class AccessTests(HomeCase):
         self.assertEqual(oct((self.home / "dashboard.json").stat().st_mode & 0o777), "0o600")
 
     def test_the_open_command_gives_a_working_url(self):
-        r = self.hz("open", env={"BROWSER": "true"})
+        r = self.hz("open")
         self.assertRegex(r.stdout.strip(), r"^http://127\.0\.0\.1:\d+$")
         self.assertNotIn(self.key, r.stdout, "the key is never printed")
 
