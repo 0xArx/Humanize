@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Humanize: give an AI agent everything a person has, and a dashboard to see it.
 
-  init [--name N] [--persona P] [--port 4242] [--no-open]
+  init [--profile ID] [--name N] [--persona P] [--port 4242] [--no-open]
         Create the identity from the template, draw the avatar, detect the host for the Open chat
         button, start the dashboard in the background and open it. Safe to re-run; never overwrites.
+        --profile starts from a ready-made profile (name, persona, card, layers, rules); see `profiles`.
+  profiles                   list the ready-made profiles
   status                     what the agent is and whether the dashboard is up
   doctor [--fix]             check this machine and the install; --fix adds keys new versions need
   dashboard [--port N]       run the dashboard in the foreground
@@ -13,7 +15,7 @@
   card [--out DIR] [--title T] [--tagline T] [--website URL] [--vcard] [--open]
         generate a print-ready business card (front.png, back.png, card.pdf, card.vcf)
   self <init|push|pull|load|unlock|status> ...   keep the agent in a private git repo, load it anywhere
-  demo                       a filled sample agent in a scratch folder, to see the dashboard
+  demo [--profile ID]        a filled sample agent in a scratch folder, to see the dashboard
 
   memory add TEXT [--kind K] [--tags T]     remember something (local SQLite, no account)
   memory search QUERY [--limit N]           find it again
@@ -57,11 +59,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / "scripts"
 TEMPLATE = ROOT / "identity.template.json"
+PROFILES = ROOT / "profiles"
 sys.path.insert(0, str(SCRIPTS))
 import keystore  # noqa: E402
 import store  # noqa: E402
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 LAYERS = range(0, 24)
 
 FIRST = ["Ari", "Mira", "Tomas", "Noor", "Iris", "Kai", "Lena", "Omar", "Sana", "Jude", "Nadia", "Rafi", "Elio", "Zara", "Idris", "Maya"]
@@ -240,13 +243,50 @@ def merge_missing(d, tpl, prefix=""):
     return added
 
 
+def list_profiles():
+    return [json.loads(f.read_text()) for f in sorted(PROFILES.glob("*.json"))]
+
+
+def load_profile(pid):
+    for prof in list_profiles():
+        if prof["id"] == pid:
+            return prof
+    die(f"no profile '{pid}'. Choose one of: " + ", ".join(x["id"] for x in list_profiles()))
+
+
+def apply_profile(d, prof, name=None, persona=None):
+    """Fill a new identity from a ready-made profile. Explicit --name and --persona win."""
+    d["name"] = name or prof["name"]
+    d["persona"] = persona or prof["persona"]
+    d["profile"] = prof["id"]
+    d["business_card"].update({k: v for k, v in prof.get("business_card", {}).items() if v})
+    on = set(prof["layers"])
+    d["layers"] = {str(n): {"enabled": n in on} for n in LAYERS}
+    d["rules"] = list(prof.get("rules", []))
+
+
+def cmd_profiles(a):
+    for prof in list_profiles():
+        print(f"{prof['id']:<12} {prof['label']}: {prof['summary']}")
+    print("\nuse one: python3 humanize.py init --profile <id> [--name \"Your Agent\"]")
+
+
 def cmd_init(a):
     home().mkdir(parents=True, exist_ok=True)
     os.chmod(home(), 0o700)
     p = ident_path()
+    prof = load_profile(a.profile) if a.profile else None
     if p.exists():
         d = load_identity()
         print(f"identity exists: {p}  ({d.get('name') or 'unnamed'})")
+        if prof:
+            print("profile not applied: it only fills a new identity, and this one already exists")
+    elif prof:
+        d = json.loads(TEMPLATE.read_text())
+        apply_profile(d, prof, a.name, a.persona)
+        store.log_entry(d, f"identity created from the {prof['label']} profile", by="humanize.py")
+        store.save(p, d)
+        print(f"identity created: {p}  ({d['name']}, {prof['label']})")
     else:
         d = json.loads(TEMPLATE.read_text())
         d["name"] = a.name or f"{random.choice(FIRST)} {random.choice(LAST)}"
@@ -675,7 +715,14 @@ def cmd_demo(a):
     d["dashboard_requests"] = [{"at": now(), "text": "Get a UK number.", "done": False}]
     for what in ("agentmail inbox ari.vale verified", "agentphone number +14155550123"):
         store.log_entry(d, what, by="agent")
-    d["face"] = {"photo": make_avatar("Ari Vale", demo / "face.png"), "seed": "Ari Vale"}
+    if getattr(a, "profile", None):
+        prof = load_profile(a.profile)
+        apply_profile(d, prof)
+        handle = ".".join(d["name"].lower().split())
+        d["email"]["agentmail"]["address"] = f"{handle}@agentmail.to"
+        d["social"] = {"x": {"handle": handle.replace(".", ""), "token": "demo"}}
+        d["calendar"]["booking_url"] = f"https://cal.com/{handle.replace('.', '-')}/15min"
+    d["face"] = {"photo": make_avatar(d["name"], demo / "face.png"), "seed": d["name"]}
     _card_mod = __import__("card")
     if _card_mod.have_pillow():
         try:
@@ -699,7 +746,7 @@ def main():
         p = sub.add_parser(name, **kw)
         p.set_defaults(f=fn)
         return p
-    p = add("init", cmd_init); p.add_argument("--name"); p.add_argument("--persona"); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
+    p = add("init", cmd_init); p.add_argument("--profile"); p.add_argument("--name"); p.add_argument("--persona"); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
     add("status", cmd_status)
     p = add("doctor", cmd_doctor); p.add_argument("--fix", action="store_true")
     p = add("dashboard", cmd_dashboard); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
@@ -708,7 +755,8 @@ def main():
     p = add("avatar", cmd_avatar); p.add_argument("seed", nargs="?")
     p = add("card", cmd_card); p.add_argument("--out"); p.add_argument("--title"); p.add_argument("--tagline"); p.add_argument("--website"); p.add_argument("--vcard", action="store_true"); p.add_argument("--open", dest="open", action="store_true")
     p = add("self", cmd_self); p.add_argument("args", nargs=argparse.REMAINDER)
-    p = add("demo", cmd_demo); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
+    add("profiles", cmd_profiles)
+    p = add("demo", cmd_demo); p.add_argument("--profile"); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
     p = add("get", cmd_get); p.add_argument("path"); p.add_argument("--pointer", action="store_true", help="print the pointer, not the secret")
     p = add("set", cmd_set); p.add_argument("path"); p.add_argument("value"); p.add_argument("--log"); p.add_argument("--json", action="store_true", help="parse VALUE as JSON whatever the key")
     p.add_argument("--secret", action="store_true", help="store VALUE in the secret store whatever the key")

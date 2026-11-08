@@ -70,6 +70,10 @@ Start with `python3 humanize.py doctor`. It checks Python, git, openssl, Node, P
 
 **A sign-up step fails.** Layer guides say how far each provider was verified (`docs/providers.md`). If a real run differs from a guide, the guide is what needs fixing; please report it.
 
+## The business card
+
+**Arabic (or other right-to-left) text on the card looks disconnected.** Pillow is drawing it without libraqm, which needs the FriBiDi library to shape right-to-left text. The card still renders, and the vCard and QR code carry the name correctly. For proper shaping install FriBiDi (`brew install fribidi` on macOS, `sudo apt install libfribidi0` on Debian and Ubuntu) and run `humanize.py card` again.
+
 ## Platform
 
 Humanize supports macOS and Linux. On Windows use WSL. It needs Python 3.9 or newer.

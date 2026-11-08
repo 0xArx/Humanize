@@ -90,7 +90,7 @@ Funding the wallet (Layer 4) is not in this table: it is optional, only needed o
 **Phase A: everything else, agent-only.**
 
 1. Pick a name and persona and check the handle ([Layer 0](layers/00-identity.md)).
-2. `python3 humanize.py init --name "<name>" --persona "<persona>"`. The dashboard is now open for the human to watch.
+2. `python3 humanize.py init --name "<name>" --persona "<persona>"`, or `python3 humanize.py init --profile <id>` when the human picked a ready-made profile (`python3 humanize.py profiles` lists them). A profile already sets the name, persona, card, rules and which layers are on: skip every step below whose layer it switched off. The dashboard is now open for the human to watch.
 3. AgentMail sign-up with the address from Step 0 as the human email, verify with the code Step 0 already has ([Layer 1](layers/01-email.md)).
 4. AgentPhone sign-up with the agent's own AgentMail inbox as the OTP recipient, read the code itself this time, verify, store the key and number ([Layer 2](layers/02-phone.md)).
 5. Generate a wallet locally ([Layer 4](layers/04-money.md)).

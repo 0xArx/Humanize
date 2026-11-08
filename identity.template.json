@@ -1,6 +1,7 @@
 {
   "name": "",
   "persona": "",
+  "profile": null,
   "email": { "agentmail": { "address": null, "api_key": null } },
   "phone": { "agentphone": { "number": null, "number_id": null, "agent_id": null, "api_key": null }, "dial": { "number": null } },
   "messaging": {},

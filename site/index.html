@@ -19,6 +19,7 @@
   <nav aria-label="Sections">
     <a href="#what" data-sec="what">What</a>
     <a href="#how" data-sec="how">How</a>
+    <a href="#profiles" data-sec="profiles">Profiles</a>
     <a href="#layers" data-sec="layers">Layers</a>
     <a href="#card" data-sec="card">Card</a>
     <a href="#dashboard" data-sec="dashboard">Dashboard</a>
@@ -43,7 +44,7 @@
     <ul class="proof reveal" aria-label="At a glance">
       <li><b>24</b><span>layers, one guide each</span></li>
       <li><b>1</b><span>email address, given once, then nothing else</span></li>
-      <li><b>199</b><span>automated tests, green on Ubuntu and macOS</span></li>
+      <li><b>341</b><span>automated tests, green on Ubuntu and macOS</span></li>
     </ul>
   </div>
 
@@ -174,6 +175,44 @@
 </section>
 
 <!-- ============ LAYERS ============ -->
+<section class="sec" id="profiles" aria-labelledby="h-profiles">
+  <div class="wrap">
+    <p class="kicker reveal">Ready-made profiles</p>
+    <h2 id="h-profiles" class="reveal">Pick a profile. Skip the setup choices.</h2>
+    <p class="sub reveal">A profile fills in the name, persona, business card, which layers are on and the starting rules, the moment you install. Your own name and persona still win, and every profile caps what the agent can spend.</p>
+    <div class="pgrid">
+      <article class="pcard reveal">
+        <header><h3>Personal assistant</h3><code>--profile assistant</code></header>
+        <p>Runs your inbox, calendar and errands, and remembers everyone you meet.</p>
+        <p class="pmeta">14 of 24 layers on. Starts as Maya Rowe, Personal Assistant.</p>
+      </article>
+      <article class="pcard reveal">
+        <header><h3>Researcher</h3><code>--profile researcher</code></header>
+        <p>Reads the web, keeps notes with sources, and writes up what it finds.</p>
+        <p class="pmeta">11 of 24 layers on. Starts as Theo Lark, Research Agent.</p>
+      </article>
+      <article class="pcard reveal">
+        <header><h3>Sales and outreach</h3><code>--profile sales</code></header>
+        <p>Finds leads, writes to them from its own inbox and books calls on its own page.</p>
+        <p class="pmeta">16 of 24 layers on. Starts as Jordan Reyes, Business Development.</p>
+      </article>
+      <article class="pcard reveal">
+        <header><h3>Customer support</h3><code>--profile support</code></header>
+        <p>Answers customers by email, chat and phone, and hands hard cases to you.</p>
+        <p class="pmeta">13 of 24 layers on. Starts as Sam Ellis, Customer Support.</p>
+      </article>
+      <article class="pcard reveal">
+        <header><h3>Builder</h3><code>--profile builder</code></header>
+        <p>Writes code, ships it to its own accounts and domain, and pays for what it uses.</p>
+        <p class="pmeta">14 of 24 layers on. Starts as Ari Vale, Software Engineer.</p>
+      </article>
+    </div>
+    <figure class="code copyable reveal"><pre id="c-prof"><code>curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh -s -- --profile sales</code></pre><button class="copy" type="button" data-target="c-prof">Copy</button></figure>
+    <p class="note reveal">Profiles are plain JSON files in <code>profiles/</code>. Adding your own is one file. Want to look first? <code>python3 humanize.py demo --profile sales</code> opens one filled in, without touching anything real.</p>
+  </div>
+</section>
+
+
 <section class="sec" id="layers" aria-labelledby="h-layers">
   <div class="wrap">
     <p class="kicker reveal">The layers</p>
@@ -557,11 +596,13 @@ python3 ~/.humanize/app/humanize.py init
       <figure class="code copyable"><pre id="c3"><code>python3 ~/.humanize/app/humanize.py status
 python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type="button" data-target="c3">Copy</button></figure>
     </div>
-    <p class="note reveal">The repository is private, so git needs to be able to read it. Ask 0xArx for access.</p>
+    <p class="note reveal">Free and open source under the MIT licence. The code is on <a href="https://github.com/0xArx/Humanize">GitHub</a>.</p>
 
     <h3 class="h3s cmdh reveal">The commands</h3>
     <div class="cmds reveal" role="table" aria-label="Commands">
       <div role="row"><code role="cell">init</code><span role="cell">Set up, draw the avatar, open the dashboard. Safe to run again.</span></div>
+      <div role="row"><code role="cell">init --profile ID</code><span role="cell">Start from a ready-made profile instead of a blank one.</span></div>
+      <div role="row"><code role="cell">profiles</code><span role="cell">List the ready-made profiles.</span></div>
       <div role="row"><code role="cell">open</code><span role="cell">Open the dashboard in your browser again.</span></div>
       <div role="row"><code role="cell">status</code><span role="cell">What the agent is and what it has.</span></div>
       <div role="row"><code role="cell">doctor --fix</code><span role="cell">Check the machine and the install, and repair what it can.</span></div>
@@ -584,7 +625,7 @@ python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type
     <p class="kicker reveal">Where it stands</p>
     <h2 id="h-status" class="reveal">Tested where it can be. Honest about where it has not been.</h2>
     <div class="stats">
-      <div class="stat reveal"><b>104</b><span>automated tests</span></div>
+      <div class="stat reveal"><b>341</b><span>automated tests</span></div>
       <div class="stat reveal"><b>3</b><span>CI jobs: Ubuntu 3.9, 3.12 and macOS</span></div>
       <div class="stat reveal"><b>24</b><span>layer guides, each checked against the vendors' own docs</span></div>
       <div class="stat reveal"><b>0</b><span>accounts created during testing</span></div>
@@ -621,7 +662,7 @@ python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type
 
 <footer class="foot">
   <div class="wrap foot-in">
-    <div><b class="serif">Humanize</b><p>Version 0.3.0. MIT licensed. Made by 0xArx.</p></div>
+    <div><b class="serif">Humanize</b><p>Version 0.4.0. MIT licensed. Made by 0xArx.</p></div>
     <p class="fine">This page is a static site. It loads nothing from other websites, and runs no trackers.</p>
   </div>
 </footer>

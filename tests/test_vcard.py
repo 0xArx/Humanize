@@ -641,6 +641,7 @@ class TestQrPayload(unittest.TestCase):
 SWIFT_SCRIPT = ROOT / "tests" / "parse_vcard.swift"
 
 
+@unittest.skipUnless(sys.platform == "darwin", "Contacts.framework is macOS only")
 @unittest.skipUnless(shutil.which("swift"), "swift not on PATH")
 @unittest.skipUnless(SWIFT_SCRIPT.exists(), "parse_vcard.swift not found")
 class TestSwiftInterop(unittest.TestCase):

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0] - 2026-11-08
+
+### Added
+- Ready-made profiles in `profiles/`: `assistant`, `researcher`, `sales`, `support` and `builder`. `humanize.py init --profile <id>` fills a new identity instantly with the profile's name, persona, business card title and tagline, enabled layers and starting rules; `--name` and `--persona` still win. `humanize.py profiles` lists them and `humanize.py demo --profile <id>` shows one filled in. A profile never overwrites an existing identity.
+
+### Fixed
+- `humanize.py card` crashed with `KeyError` on Pillow builds without libraqm (no FriBiDi installed, the default on a fresh Mac). It now falls back to basic text layout; right-to-left text renders unshaped and `docs/troubleshooting.md` says how to get full shaping.
+- `card.pdf` is now byte-identical across runs: newer Pillow writes the PDF date as `D:...Z`, which the old pinning pattern missed.
+- The Contacts.framework vCard check is skipped off macOS (Linux CI runners have `swift` but not Contacts).
+
 ## [0.3.0] - 2026-09-22
 
 ### Changed

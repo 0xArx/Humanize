@@ -35,6 +35,7 @@ import math
 import os
 import re
 import sys
+import time
 
 # --- pydeps path (same pattern as avatar.py) ---------------------------------
 _pd = os.path.join(
@@ -129,6 +130,59 @@ def _require_pillow():
 # ---------------------------------------------------------------------------
 # Text helpers (all use Pillow's textbbox with anchor='lt')
 # ---------------------------------------------------------------------------
+
+_RAQM = None
+
+
+def _has_raqm():
+    """True when Pillow can do complex text layout (libraqm with FriBiDi)."""
+    global _RAQM
+    if _RAQM is None:
+        try:
+            from PIL import features
+            _RAQM = bool(features.check("raqm"))
+        except Exception:
+            _RAQM = False
+    return _RAQM
+
+
+class _BasicDraw:
+    """An ImageDraw stand-in for Pillow builds without libraqm.
+
+    Those builds raise KeyError when given a text direction. This drops the
+    direction and lays right-to-left text out in visual order, so the card
+    still renders (Arabic comes out unshaped) instead of crashing. Installing
+    FriBiDi gives full shaping; see docs/troubleshooting.md.
+    """
+
+    def __init__(self, draw):
+        self._d = draw
+
+    def __getattr__(self, name):
+        return getattr(self._d, name)
+
+    @staticmethod
+    def _fix(text, kw):
+        if kw.pop("direction", None) == "rtl":
+            text = text[::-1]
+        kw.pop("features", None)
+        kw.pop("language", None)
+        return text, kw
+
+    def text(self, xy, text, *a, **kw):
+        text, kw = self._fix(text, kw)
+        return self._d.text(xy, text, *a, **kw)
+
+    def textbbox(self, xy, text, *a, **kw):
+        text, kw = self._fix(text, kw)
+        return self._d.textbbox(xy, text, *a, **kw)
+
+
+def _draw(img):
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(img)
+    return d if _has_raqm() else _BasicDraw(d)
+
 
 def _font(key, size):
     from PIL import ImageFont
@@ -306,7 +360,7 @@ def _render_front(fields, seed):
     _av = _get_avatar()
 
     img = Image.new("RGB", (W, H), BG)
-    draw = ImageDraw.Draw(img)
+    draw = _draw(img)
 
     p = _av.params(seed)
     name = fields.get("name") or "Agent"
@@ -519,7 +573,7 @@ def _render_back(fields, seed):
 
     p = _av.params(seed)
     img = _ribbon_back_img(p)
-    draw = ImageDraw.Draw(img)
+    draw = _draw(img)
 
     # --- QR code -------------------------------------------------------------
     payload = _vc.qr_payload(fields)
@@ -549,7 +603,7 @@ def _render_back(fields, seed):
     TILE_INK = INK
 
     tile = Image.new("RGB", (tile_w, tile_h), TILE_BG)
-    td = ImageDraw.Draw(tile)
+    td = _draw(tile)
     qr_ox = TILE_PAD + quiet * ms
     qr_oy = TILE_PAD + quiet * ms
     _draw_qr(td, matrix, qr_ox, qr_oy, ms, TILE_INK, TILE_BG)
@@ -676,11 +730,13 @@ def pdf_bytes(identity):
     front = render(identity, "front")
     back = render(identity, "back")
     buf = io.BytesIO()
+    fixed = time.struct_time((2023, 1, 1, 0, 0, 0, 6, 1, 0))
     front.save(buf, format="PDF", save_all=True, append_images=[back],
-               resolution=300)
+               resolution=300, creationDate=fixed, modDate=fixed)
     raw = buf.getvalue()
-    # Stamp a fixed creation date so the PDF is deterministic.
-    raw = re.sub(rb"D:\d{14}\+00'00'", b"D:20230101000000+00'00'", raw)
+    # Belt and braces: older and newer Pillow write the date in different
+    # forms ("+00'00'" or "Z"), so pin any that slipped through.
+    raw = re.sub(rb"D:\d{14}(?:Z|[+-]\d\d'\d\d')?", b"D:20230101000000Z", raw)
     return raw
 
 

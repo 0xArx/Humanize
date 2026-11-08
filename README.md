@@ -28,6 +28,24 @@ git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
 python3 ~/.humanize/app/humanize.py init --name "Ari Vale"
 ```
 
+### Or start from a ready-made profile
+
+Skip the naming and setup choices: a profile fills in the name, persona, business card, which layers are on and the starting rules, instantly.
+
+| Profile | What it is for |
+|---------|----------------|
+| `assistant` | Runs your inbox, calendar and errands, and remembers everyone you meet. |
+| `researcher` | Reads the web, keeps notes with sources, and writes up what it finds. |
+| `sales` | Finds leads, writes to them from its own inbox and books calls on its own page. |
+| `support` | Answers customers by email, chat and phone, and hands hard cases to you. |
+| `builder` | Writes code, ships it to its own accounts and domain, and pays for what it uses. |
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh -s -- --profile sales
+```
+
+`--name` and `--persona` still override the profile's. `python3 humanize.py profiles` lists them, and `python3 humanize.py demo --profile sales` shows one filled in. Profiles are plain JSON in `profiles/`, so adding your own is one file.
+
 `init` creates the identity, draws the avatar, works out which app your agent chats in, starts the dashboard in the background and opens it. It takes a few seconds and is safe to run again. The installer also links the folder into `~/.claude/skills/humanize` when Claude Code is installed.
 
 Then tell your agent:

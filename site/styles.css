@@ -50,7 +50,7 @@ code { font-size: .9em; background: var(--panel2); border: 1px solid var(--line)
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 26px/1 var(--serif); }
 .brand-orb { width: 30px; height: 30px; border-radius: 50%; }
 .nav nav { display: flex; gap: 4px; justify-content: center; }
-.nav nav a { text-decoration: none; padding: 8px 14px; border-radius: 999px; color: var(--ink2); font-size: 14px; transition: background .15s, color .15s; }
+.nav nav a { white-space: nowrap; text-decoration: none; padding: 8px 14px; border-radius: 999px; color: var(--ink2); font-size: 14px; transition: background .15s, color .15s; }
 .nav nav a:hover { color: var(--ink); background: var(--panel2); }
 .nav nav a[aria-current="true"] { color: var(--ink); background: var(--panel2); }
 .theme { font: 13px var(--mono); color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
@@ -291,3 +291,12 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .nav, .theme, .copy, .seeds { display: none; }
   body::before { display: none; }
 }
+
+/* Ready-made profiles */
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; margin: 0 0 28px; }
+.pcard { padding: 20px 22px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 8px; }
+.pcard header { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.pcard h3 { margin: 0; font-size: 19px; }
+.pcard header code { font-size: 12px; white-space: nowrap; }
+.pcard p { margin: 0; color: var(--ink2); }
+.pcard .pmeta { margin-top: auto; padding-top: 8px; font: 12.5px/1.5 var(--mono); color: var(--mute); }
