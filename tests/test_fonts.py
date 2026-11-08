@@ -88,15 +88,17 @@ class FontLoadTest(unittest.TestCase):
         path = FONTS_DIR / rel
         if not path.exists():
             self.skipTest(f"{rel} missing")
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw, ImageFont, features
         arabic_text = "مرحبا"  # مرحبا
+        # Pillow without libraqm (no FriBiDi) cannot take a direction; the card
+        # falls back to basic layout there, so check the font loads the same way.
+        kw = {"direction": "rtl"} if features.check("raqm") else {}
         for size in (12, 24, 48):
             try:
                 font = ImageFont.truetype(str(path), size)
                 img = Image.new("RGB", (300, size + 20), (245, 242, 234))
                 draw = ImageDraw.Draw(img)
-                draw.text((10, 10), arabic_text, font=font, fill=(24, 22, 20),
-                          direction="rtl")
+                draw.text((10, 10), arabic_text, font=font, fill=(24, 22, 20), **kw)
             except Exception as exc:
                 self.fail(f"{label} @{size}px with Arabic text: {exc}")
 
