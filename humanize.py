@@ -64,7 +64,7 @@ sys.path.insert(0, str(SCRIPTS))
 import keystore  # noqa: E402
 import store  # noqa: E402
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 LAYERS = range(0, 24)
 
 FIRST = ["Ari", "Mira", "Tomas", "Noor", "Iris", "Kai", "Lena", "Omar", "Sana", "Jude", "Nadia", "Rafi", "Elio", "Zara", "Idris", "Maya"]
@@ -721,6 +721,7 @@ def cmd_demo(a):
         handle = ".".join(d["name"].lower().split())
         d["email"]["agentmail"]["address"] = f"{handle}@agentmail.to"
         d["social"] = {"x": {"handle": handle.replace(".", ""), "token": "demo"}}
+        d["accounts"]["github"]["username"] = handle.replace(".", "")
         d["calendar"]["booking_url"] = f"https://cal.com/{handle.replace('.', '-')}/15min"
     d["face"] = {"photo": make_avatar(d["name"], demo / "face.png"), "seed": d["name"]}
     _card_mod = __import__("card")

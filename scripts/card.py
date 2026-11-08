@@ -575,105 +575,111 @@ def _render_back(fields, seed):
     img = _ribbon_back_img(p)
     draw = _draw(img)
 
-    # --- QR code -------------------------------------------------------------
+    # --- QR code, left column ------------------------------------------------
+    # Two columns: a large QR tile on the left (bigger modules scan more
+    # reliably) and the text on the right. Stacking both vertically on a
+    # 2 inch card left the text no room and let long payloads run off the edge.
     payload = _vc.qr_payload(fields)
     matrix = _qrmod.matrix(payload)
     n = len(matrix)
     quiet = 4          # ISO 18004 minimum quiet zone in modules
     total_mod = n + 2 * quiet
+    TILE_PAD = 16
 
-    # Layout: reserve top space for aesthetics and bottom space for text.
-    TOP_SPACE = MARGIN   # 36px of dark background visible above tile
-    BOTTOM_TEXT = 95     # space below tile for hint + name + contact + wordmark
-    TILE_PAD = 18
-
-    # Maximum QR pixels that fit within the reserved space.
-    max_qr_px = H - MARGIN - TOP_SPACE - 2 * TILE_PAD - BOTTOM_TEXT - MARGIN
-    # = 600 - 36 - 36 - 36 - 95 - 36 = 361
-
-    ms = max(6, min(8, max_qr_px // total_mod))
+    max_qr_px = H - 2 * MARGIN - 2 * TILE_PAD
+    ms = max(3, min(10, max_qr_px // total_mod))
     qr_px = total_mod * ms
+    tile_w = tile_h = qr_px + 2 * TILE_PAD
+    tile_x = MARGIN + 20
+    tile_y = (H - tile_h) // 2
 
-    tile_w = qr_px + 2 * TILE_PAD
-    tile_h = qr_px + 2 * TILE_PAD
-    tile_x = (W - tile_w) // 2
-    tile_y = MARGIN + TOP_SPACE  # 72
-
-    TILE_BG = BG
-    TILE_INK = INK
-
-    tile = Image.new("RGB", (tile_w, tile_h), TILE_BG)
+    tile = Image.new("RGB", (tile_w, tile_h), BG)
     td = _draw(tile)
-    qr_ox = TILE_PAD + quiet * ms
-    qr_oy = TILE_PAD + quiet * ms
-    _draw_qr(td, matrix, qr_ox, qr_oy, ms, TILE_INK, TILE_BG)
-
-    # Rounded-corner mask (from B: keep rounded-corner tile).
+    _draw_qr(td, matrix, TILE_PAD + quiet * ms, TILE_PAD + quiet * ms, ms, INK, BG)
     mask = Image.new("L", (tile_w, tile_h), 0)
     ImageDraw.Draw(mask).rounded_rectangle(
         [0, 0, tile_w - 1, tile_h - 1], radius=16, fill=255
     )
+    # Centre the ribbons behind the QR tile, so they glow around it and stay
+    # out from behind the text.
+    shift = tile_x + tile_w // 2 - W // 2
+    moved = Image.new("RGB", (W, H), img.getpixel((0, 0)))
+    moved.paste(img, (shift, 0))
+    img = moved
+    draw = _draw(img)
     img.paste(tile, (tile_x, tile_y), mask)
 
-    # --- Text area below QR tile (from mustGraft: A + B) ---------------------
-    ty = tile_y + tile_h + 10
-    avail = H - MARGIN - ty   # space available below tile before bottom margin
+    # --- Text, right column ----------------------------------------------------
+    x0 = tile_x + tile_w + 48
+    x1 = W - MARGIN - 8
+    col_w = x1 - x0
 
-    hint_f = _font("mono", 22)
-    hint_text = "Scan to save contact"
-    hint_h = _th(draw, hint_text, hint_f)
+    def clip(text, font):
+        """Trim with an ellipsis until text fits the column."""
+        if _tw(draw, text, font) <= col_w:
+            return text
+        while len(text) > 1 and _tw(draw, text + "\u2026", font) > col_w:
+            text = text[:-1]
+        return text.rstrip() + "\u2026"
 
-    if avail >= hint_h + 4:
-        # "Scan to save contact" centered under QR (from A).
-        draw.text((W // 2, ty), hint_text,
-                  font=hint_f, fill=BACK_HINT, anchor="mt")
-        ty += hint_h + 6
-        avail = H - MARGIN - ty
+    def line_h(font):
+        ascent, descent = font.getmetrics()
+        return ascent + descent
 
-    # Agent name on back (from A's back face approach).
+    blocks = []   # (text, font, fill, rtl, gap_after)
+    blocks.append(("Scan to save contact", _font("mono", 21), BACK_HINT, False, 22))
+
     name = fields.get("name") or ""
-    if name and avail >= 30:
+    if name:
         name_ar = _has_arabic(name)
-        name_back_f = _font("arabic" if name_ar else "serif", 26)
-        nh = _th(draw, name, name_back_f, "rtl" if name_ar else "ltr")
-        if nh <= avail - 6:
-            if name_ar:
-                draw.text((W // 2, ty), name, font=name_back_f,
-                          fill=BACK_LIGHT, direction="rtl", anchor="mt")
-            else:
-                draw.text((W // 2, ty), name, font=name_back_f,
-                          fill=BACK_LIGHT, anchor="mt")
-            ty += nh + 5
-            avail = H - MARGIN - ty
+        name_dir = "rtl" if name_ar else "ltr"
+        name_f, _ = _fit_font(draw, name, "arabic" if name_ar else "serif",
+                              54, 30, col_w, name_dir)
+        lines = [name] if _tw(draw, name, name_f, name_dir) <= col_w \
+            else _wrap(draw, name, name_f, col_w, name_dir)[:2]
+        if not name_ar:
+            lines = [clip(ln, name_f) for ln in lines]
+        for i, ln in enumerate(lines):
+            blocks.append((ln, name_f, BACK_LIGHT, name_ar, 4 if i < len(lines) - 1 else 14))
 
-    # One key contact line (email, phone, or stripped website).
-    contact_line = ""
-    if fields.get("email"):
-        contact_line = fields["email"]
-    elif fields.get("phone"):
-        contact_line = fields["phone"]
-    elif fields.get("website"):
-        contact_line = (fields["website"]
-                        .replace("https://", "")
-                        .replace("http://", "")
-                        .rstrip("/"))
+    title = fields.get("title")
+    if title:
+        t_ar = _has_arabic(title)
+        t_dir = "rtl" if t_ar else "ltr"
+        t_f, _ = _fit_font(draw, title, "arabic" if t_ar else "sans", 24, 18, col_w, t_dir)
+        t_lines = _wrap(draw, title, t_f, col_w, t_dir)[:2] or [title]
+        if len(_wrap(draw, title, t_f, col_w, t_dir)) > 2 and not t_ar:
+            t_lines[-1] = clip(t_lines[-1] + " \u2026", t_f)
+        for i, ln in enumerate(t_lines):
+            blocks.append((ln if t_ar else clip(ln, t_f), t_f, BACK_HINT, t_ar,
+                           2 if i < len(t_lines) - 1 else 14))
 
-    if contact_line and avail >= 26:
-        ct_f = _font("mono", 20)
-        ct_w = _tw(draw, contact_line, ct_f)
-        if ct_w > W - 2 * MARGIN:
-            ct_f, _ = _fit_font(draw, contact_line, "mono", 20, 14,
-                                 W - 2 * MARGIN)
-        ct_h = _th(draw, contact_line, ct_f)
-        if ct_h <= avail - 4:
-            draw.text((W // 2, ty), contact_line,
-                      font=ct_f, fill=BACK_LIGHT, anchor="mt")
+    for key in ("email", "phone", "website"):
+        val = fields.get(key)
+        if not val:
+            continue
+        if key == "website":
+            val = val.replace("https://", "").replace("http://", "").rstrip("/")
+        ct_f, _ = _fit_font(draw, val, "mono", 20, 14, col_w)
+        blocks.append((clip(val, ct_f), ct_f, BACK_LIGHT, False, 6))
 
-    # "humanize" wordmark pinned to the bottom of the card.
-    wm_f = _font("mono", 20)
-    wm_y = H - MARGIN - _th(draw, "humanize", wm_f) - 2
-    draw.text((W // 2, wm_y), "humanize",
-              font=wm_f, fill=BACK_LIGHT, anchor="mt")
+    wm_f = _font("mono", 18)
+    wm_h = line_h(wm_f)
+    room = H - 2 * MARGIN - wm_h - 16
+    # Drop trailing contact lines until the block fits above the wordmark.
+    while blocks and sum(line_h(f) + g for _, f, _, _, g in blocks) > room:
+        blocks.pop()
+
+    total = sum(line_h(f) + g for _, f, _, _, g in blocks)
+    y = MARGIN + max(0, (room - total) // 2)
+    for text, font, fill, rtl, gap in blocks:
+        if rtl:
+            draw.text((x1, y), text, font=font, fill=fill, direction="rtl", anchor="ra")
+        else:
+            draw.text((x0, y), text, font=font, fill=fill, anchor="la")
+        y += line_h(font) + gap
+
+    draw.text((x0, H - MARGIN - wm_h), "humanize", font=wm_f, fill=BACK_HINT, anchor="la")
 
     return img
 

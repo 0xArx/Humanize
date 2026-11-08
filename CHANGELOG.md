@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1] - 2026-11-08
+
+### Changed
+- The card back is now two columns: a larger QR code on the left (bigger modules scan more reliably) and the hint, name, title and contact details on the right. Before, the hint, name, email and wordmark overlapped under the QR, and long payloads pushed the QR tile off the bottom edge. Lines that still do not fit are shrunk, wrapped or trimmed with an ellipsis.
+
+### Fixed
+- `humanize.py demo --profile` no longer shows the sample agent's GitHub name.
+
 ## [0.4.0] - 2026-11-08
 
 ### Added
