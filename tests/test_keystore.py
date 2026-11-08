@@ -14,12 +14,12 @@ class StoreTests(HomeCase):
         self.init()
 
     def test_round_trip_and_mode(self):
-        keystore.put("email.mailgent.api_key", "mgnt-abc\nwith newline and é")
-        self.assertEqual(keystore.get("email.mailgent.api_key"), "mgnt-abc\nwith newline and é")
+        keystore.put("email.example.api_key", "mgnt-abc\nwith newline and é")
+        self.assertEqual(keystore.get("email.example.api_key"), "mgnt-abc\nwith newline and é")
         self.assertEqual(oct((self.home / "secrets.json").stat().st_mode & 0o777), "0o600")
-        keystore.delete("email.mailgent.api_key")
-        self.assertIsNone(keystore.get("email.mailgent.api_key"))
-        keystore.delete("email.mailgent.api_key")   # deleting nothing is fine
+        keystore.delete("email.example.api_key")
+        self.assertIsNone(keystore.get("email.example.api_key"))
+        keystore.delete("email.example.api_key")   # deleting nothing is fine
 
     def test_the_value_is_not_stored_readably(self):
         keystore.put("x.token", "plain-secret-value")
@@ -73,34 +73,34 @@ class CliTests(HomeCase):
         self.init()
 
     def test_a_secret_looking_key_goes_to_the_store_automatically(self):
-        r = self.hz("set", "email.mailgent.api_key", "mgnt-TOPSECRET123")
+        r = self.hz("set", "email.example.api_key", "mgnt-TOPSECRET123")
         self.assertIn("stored in", r.stderr)
         raw = self.identity.read_text()
         self.assertNotIn("TOPSECRET123", raw)
-        self.assertEqual(self.load()["email"]["mailgent"]["api_key"], "secret:email.mailgent.api_key")
+        self.assertEqual(self.load()["email"]["example"]["api_key"], "secret:email.example.api_key")
         self.assertNotIn("TOPSECRET123", (self.home / "identity.json.bak").read_text())
-        self.assertEqual(self.hz("get", "email.mailgent.api_key").stdout.strip(), "mgnt-TOPSECRET123", "get fetches it for the agent")
-        self.assertEqual(self.hz("get", "email.mailgent.api_key", "--pointer").stdout.strip(), "secret:email.mailgent.api_key")
+        self.assertEqual(self.hz("get", "email.example.api_key").stdout.strip(), "mgnt-TOPSECRET123", "get fetches it for the agent")
+        self.assertEqual(self.hz("get", "email.example.api_key", "--pointer").stdout.strip(), "secret:email.example.api_key")
 
     def test_only_secret_looking_keys_are_moved(self):
-        self.hz("set", "email.mailgent.address", "a@b.dev")
+        self.hz("set", "email.example.address", "a@b.dev")
         self.hz("set", "ssh.public_key", "ssh-ed25519 AAAA")
         self.hz("set", "phone.dial.auth", "~/.local/share/dial/auth.json")
         d = self.load()
-        self.assertEqual(d["email"]["mailgent"]["address"], "a@b.dev")
+        self.assertEqual(d["email"]["example"]["address"], "a@b.dev")
         self.assertEqual(d["ssh"]["public_key"], "ssh-ed25519 AAAA", "a public key is not a secret")
         self.assertEqual(d["phone"]["dial"]["auth"], "~/.local/share/dial/auth.json", "a file path is not a secret")
 
     def test_plain_and_secret_flags_override(self):
-        self.hz("set", "email.mailgent.api_key", "keep-me-plain-1234", "--plain")
-        self.assertEqual(self.load()["email"]["mailgent"]["api_key"], "keep-me-plain-1234")
+        self.hz("set", "email.example.api_key", "keep-me-plain-1234", "--plain")
+        self.assertEqual(self.load()["email"]["example"]["api_key"], "keep-me-plain-1234")
         self.hz("set", "persona", "sensitive persona text", "--secret")
         self.assertEqual(self.load()["persona"], "secret:persona")
         self.assertEqual(self.hz("get", "persona").stdout.strip(), "sensitive persona text")
 
     def test_setting_a_pointer_or_a_non_string_is_left_alone(self):
-        self.hz("set", "email.mailgent.api_key", "secret:already.there")
-        self.assertEqual(self.load()["email"]["mailgent"]["api_key"], "secret:already.there")
+        self.hz("set", "email.example.api_key", "secret:already.there")
+        self.assertEqual(self.load()["email"]["example"]["api_key"], "secret:already.there")
         self.hz("set", "messaging.telegram.token", '{"a": 1}')
         self.assertEqual(self.load()["messaging"]["telegram"]["token"], {"a": 1})
 
@@ -114,9 +114,9 @@ class CliTests(HomeCase):
 
     def test_secret_commands(self):
         self.assertIn("file", self.hz("secret", "backend").stdout)
-        self.hz("set", "email.mailgent.api_key", "mgnt-LISTED-000000")
+        self.hz("set", "email.example.api_key", "mgnt-LISTED-000000")
         listed = json.loads(self.hz("secret", "list").stdout)
-        self.assertEqual(listed, [{"name": "email.mailgent.api_key", "present": True}])
+        self.assertEqual(listed, [{"name": "email.example.api_key", "present": True}])
         self.hz("secret", "set", "custom.thing", "value-1")
         self.assertEqual(self.hz("secret", "get", "custom.thing").stdout.strip(), "value-1")
         self.hz("secret", "delete", "custom.thing")
@@ -124,12 +124,12 @@ class CliTests(HomeCase):
 
     def test_migrate_moves_existing_plain_text_and_scrubs_the_backup_copy(self):
         d = self.load()
-        d["email"]["mailgent"]["api_key"] = "mgnt-OLDPLAIN-5555"
+        d["email"].setdefault("example", {})["api_key"] = "mgnt-OLDPLAIN-5555"
         d["accounts"] = {"github": {"username": "arivale", "token": "ghp_OLDPLAINTOKEN0000"}}
         d["wallet"]["evm"]["privateKey"] = "0xPLAINPRIVATEKEY0000"
         self.identity.write_text(json.dumps(d))
         out = json.loads(self.hz("secret", "migrate").stdout)
-        self.assertEqual(sorted(out["moved"]), ["accounts.github.token", "email.mailgent.api_key", "wallet.evm.privateKey"])
+        self.assertEqual(sorted(out["moved"]), ["accounts.github.token", "email.example.api_key", "wallet.evm.privateKey"])
         for f in ("identity.json", "identity.json.bak"):
             text = (self.home / f).read_text()
             for secret in ("OLDPLAIN-5555", "OLDPLAINTOKEN", "PLAINPRIVATEKEY"):
@@ -140,7 +140,7 @@ class CliTests(HomeCase):
 
     def test_doctor_reports_and_fixes_plain_secrets_and_missing_ones(self):
         d = self.load()
-        d["email"]["mailgent"]["api_key"] = "mgnt-DOCTOR-7777"
+        d["email"].setdefault("example", {})["api_key"] = "mgnt-DOCTOR-7777"
         self.identity.write_text(json.dumps(d))
         self.assertIn("plain text", self.hz("doctor").stdout)
         r = self.hz("doctor", "--fix")
@@ -148,7 +148,7 @@ class CliTests(HomeCase):
         self.assertIn("secret(s) present", self.hz("doctor").stdout)
         (self.home / "secrets.json").unlink()
         self.assertIn("refer to secrets this machine does not have", self.hz("doctor").stdout)
-        self.assertNotEqual(self.hz("get", "email.mailgent.api_key", check=False).returncode, 0)
+        self.assertNotEqual(self.hz("get", "email.example.api_key", check=False).returncode, 0)
 
 
 @unittest.skipUnless(os.environ.get("HUMANIZE_TEST_REAL_KEYCHAIN") and sys.platform == "darwin", "set HUMANIZE_TEST_REAL_KEYCHAIN=1 on a Mac to use the real Keychain")

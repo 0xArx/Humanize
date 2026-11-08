@@ -1,6 +1,6 @@
 """Secrets, kept where the operating system protects them.
 
-The identity file holds only pointers such as "secret:email.mailgent.api_key". The value itself lives in:
+The identity file holds only pointers such as "secret:email.agentmail.api_key". The value itself lives in:
 
   keychain        the macOS Keychain, through the `security` tool
   secret-service  the Linux keyring, through `secret-tool` (needs a desktop session)

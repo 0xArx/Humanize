@@ -30,6 +30,16 @@ Start with `python3 humanize.py doctor`. It checks Python, git, openssl, Node, P
 
 **No PNG.** Pillow could not be installed. Run `python3 humanize.py avatar` and read the message; it installs into `~/.humanize/pydeps` using `pip install --target`, which works even on systems that block system-wide installs. The dashboard draws the avatar live either way.
 
+## The business card
+
+**"Pillow is required for the card command".** Run `python3 humanize.py avatar` first; it installs Pillow into `~/.humanize/pydeps`. Once that succeeds, run `python3 humanize.py card` again.
+
+**The QR code will not scan.**
+1. Make sure you are scanning `back.png` or the printed back face, not the front.
+2. Print at or near the card's native size (3.5 x 2 in). Scaling it down too far makes the modules too small for phone cameras. Most cameras work down to about 1 x 0.6 in, but 3.5 x 2 in is reliable.
+3. Check the printed contrast. The QR uses near-black on cream. If your printer maps cream to white and near-black to grey, the contrast may drop too low. Ask the print shop to use full contrast or use a printer with colour correction disabled.
+4. If scanning from a screen, zoom `back.png` to fill most of the phone's viewfinder. Screen glare can make dark modules look lighter; reduce screen brightness and tilt the phone slightly.
+
 ## Secrets
 
 **"is not in this machine's secret store".** The identity points at a secret this machine does not have, for example after copying `identity.json` by hand. Load the backup with the self key (`self unlock --force`), which restores every secret, or set it again with `humanize.py set <path> <value>`.

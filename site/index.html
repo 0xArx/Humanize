@@ -20,6 +20,7 @@
     <a href="#what" data-sec="what">What</a>
     <a href="#how" data-sec="how">How</a>
     <a href="#layers" data-sec="layers">Layers</a>
+    <a href="#card" data-sec="card">Card</a>
     <a href="#dashboard" data-sec="dashboard">Dashboard</a>
     <a href="#security" data-sec="security">Security</a>
     <a href="#use" data-sec="use">Use it</a>
@@ -41,8 +42,8 @@
     </div>
     <ul class="proof reveal" aria-label="At a glance">
       <li><b>24</b><span>layers, one guide each</span></li>
-      <li><b>0</b><span>people needed for the first ten steps</span></li>
-      <li><b>104</b><span>automated tests, green on Ubuntu and macOS</span></li>
+      <li><b>1</b><span>email address, given once, then nothing else</span></li>
+      <li><b>199</b><span>automated tests, green on Ubuntu and macOS</span></li>
     </ul>
   </div>
 
@@ -115,7 +116,6 @@
       <figure class="code" aria-label="A sample identity file">
         <pre><code>{
   "name": "Ari Vale",
-  "did": "did:key:z6Mkha...",
   "email": {
     "agentmail": { "address": "ari.vale@agentmail.to",
                    "api_key": "secret:email.agentmail.api_key" }
@@ -144,9 +144,9 @@
       <li class="step reveal">
         <span class="step-n">2</span>
         <h3>The agent sets itself up</h3>
-        <p>You tell it to read <code>SKILL.md</code>. With no one's help and no cost, it gets everything below, using its own inbox for every verification code.</p>
+        <p>You tell it to read <code>SKILL.md</code>. One email address and one relayed code, given once, is all it asks of you. After that it gets everything below with no help and no cost, using its own inbox for every later verification code.</p>
         <ul class="chips">
-          <li>inbox</li><li>phone number</li><li>wallet</li><li>DID</li><li>vault</li><li>calendar</li><li>avatar</li><li>voice</li><li>memory</li><li>dashboard</li>
+          <li>inbox</li><li>phone number</li><li>wallet</li><li>vault</li><li>calendar</li><li>avatar</li><li>voice</li><li>memory</li><li>dashboard</li>
         </ul>
       </li>
       <li class="step reveal">
@@ -199,22 +199,22 @@
     <div class="lgrid" id="lgrid">
         <article class="lcard reveal" data-n="0" data-group="Self" data-need="nobody">
           <header><span class="num">00</span><h3>Identity</h3><span class="badge ok">Needs nobody</span></header>
-          <p class="gist">A name, a persona and a DID of its own.</p>
+          <p class="gist">A name, a persona and a business card.</p>
           <button class="more" type="button" aria-expanded="false" aria-controls="ld0">How it works</button>
           <div class="detail" id="ld0" hidden>
-            <p>The agent picks a plausible name, checks the handle is free, and gets a cryptographic identity it can sign with. You can rename it from the dashboard at any time.</p>
-            <p class="tags"><span>Uses</span> Mailgent DID</p>
-            
+            <p>The agent picks a plausible name and checks the handle is free. You can rename it from the dashboard at any time. Once the inbox and number exist, one command generates a printable business card with a QR code that saves the agent as a contact when scanned. An earlier draft of this layer generated a vendor-issued identity; it was dropped when that vendor&#x27;s own tooling turned out not to work reliably. See the status page for why.</p>
+            <p class="tags"><span>Uses</span> Nothing, entirely local</p>
+
           </div>
         </article>
-        <article class="lcard reveal" data-n="1" data-group="Reach" data-need="nobody">
-          <header><span class="num">01</span><h3>Email</h3><span class="badge ok">Needs nobody</span></header>
-          <p class="gist">Inboxes it reads and sends from.</p>
+        <article class="lcard reveal" data-n="1" data-group="Reach" data-need="person">
+          <header><span class="num">01</span><h3>Email</h3><span class="badge ask">Needs you</span></header>
+          <p class="gist">An inbox it reads and sends from.</p>
           <button class="more" type="button" aria-expanded="false" aria-controls="ld1">How it works</button>
           <div class="detail" id="ld1" hidden>
-            <p>One API call makes a Mailgent address with a vault, a calendar and a wallet. AgentMail adds a conventional address. Every verification code lands here, so the agent never asks you for one.</p>
-            <p class="tags"><span>Uses</span> Mailgent, AgentMail</p>
-            
+            <p>AgentMail (YC-backed) makes the inbox. Its own sign-up sends the first verification code to a real human email, by design, so this is the one place the agent asks you for anything. Every code after this one lands in its own inbox instead.</p>
+            <p class="tags"><span>Uses</span> AgentMail</p>
+            <p class="need-note"><span>A person is needed for</span> one real email address, once, to relay one code</p>
           </div>
         </article>
         <article class="lcard reveal" data-n="2" data-group="Reach" data-need="nobody">
@@ -239,11 +239,11 @@
         </article>
         <article class="lcard reveal" data-n="4" data-group="Money" data-need="person">
           <header><span class="num">04</span><h3>Money</h3><span class="badge ask">Needs you</span></header>
-          <p class="gist">An x402 wallet, Stripe, a card.</p>
+          <p class="gist">A self-custodied wallet, Stripe, a card.</p>
           <button class="more" type="button" aria-expanded="false" aria-controls="ld4">How it works</button>
           <div class="detail" id="ld4" hidden>
-            <p>The Mailgent wallet pays any x402 service per request with no account at all. You fund it once, only when something paid is needed. A card needs one identity check, and Stripe payouts need bank details.</p>
-            <p class="tags"><span>Uses</span> x402, Stripe</p>
+            <p>A locally generated wallet, held by the agent (or by you, if you keep the key), pays any x402 service per request with no account at all. You fund it once, only when something paid is needed. A card needs one identity check, and Stripe payouts need bank details.</p>
+            <p class="tags"><span>Uses</span> Local wallet, x402, Stripe</p>
             <p class="need-note"><span>A person is needed for</span> funding once, a card&#x27;s ID check</p>
           </div>
         </article>
@@ -332,8 +332,8 @@
           <p class="gist">A vault and an authenticator.</p>
           <button class="more" type="button" aria-expanded="false" aria-controls="ld13">How it works</button>
           <div class="detail" id="ld13" hidden>
-            <p>Passwords, 2FA secrets and tokens go in the Mailgent vault, which also produces one-time codes. The few keys the agent needs to reach it live in the macOS Keychain.</p>
-            <p class="tags"><span>Uses</span> Mailgent vault, Keychain</p>
+            <p>Passwords, 2FA secrets and tokens all live in the machine&#x27;s own secret store, the macOS Keychain or the Linux keyring. Two-factor codes are generated locally too, by the standard algorithm every authenticator app uses, with no vendor in between.</p>
+            <p class="tags"><span>Uses</span> Keychain, local TOTP</p>
             
           </div>
         </article>
@@ -352,8 +352,8 @@
           <p class="gist">A calendar and a booking page.</p>
           <button class="more" type="button" aria-expanded="false" aria-controls="ld15">How it works</button>
           <div class="detail" id="ld15" hidden>
-            <p>The Mailgent calendar is included and has its own commands. Cal.com adds a public booking link for signatures and profiles.</p>
-            <p class="tags"><span>Uses</span> Mailgent, Cal.com</p>
+            <p>A local iCalendar file is its private calendar, importable into any real calendar app. Cal.com adds a public booking link for signatures and profiles.</p>
+            <p class="tags"><span>Uses</span> Local calendar, Cal.com</p>
             
           </div>
         </article>
@@ -442,6 +442,42 @@
   </div>
 </section>
 
+<!-- ============ BUSINESS CARD ============ -->
+<section class="sec tint" id="card" aria-labelledby="h-card">
+  <div class="wrap">
+    <p class="kicker reveal">The business card</p>
+    <h2 id="h-card" class="reveal">A card the agent can hand to anyone.</h2>
+    <p class="sub reveal">One command reads the agent&#x27;s own details and produces a printable card, a vCard file to attach to emails, and a QR code that saves the agent as a contact when scanned with any phone camera.</p>
+
+    <div class="card-pair reveal" aria-label="Front and back of the demo agent business card">
+      <figure class="card-face">
+        <img src="/img/card-front.png" width="525" height="300" alt="The front face of the Ari Vale agent business card: name in serif type, title and tagline, and a contact grid showing email, phone, website and social handle on a warm cream background." loading="lazy">
+        <figcaption>Front: name, title, tagline and contact details.</figcaption>
+      </figure>
+      <figure class="card-face">
+        <img src="/img/card-back.png" width="525" height="300" alt="The back face of the Ari Vale agent business card: a dark ribbon field with a cream QR code tile and the text Scan to save contact." loading="lazy">
+        <figcaption>Back: QR code that saves the contact when scanned.</figcaption>
+      </figure>
+    </div>
+
+    <div class="card-how reveal">
+      <h3>How it works</h3>
+      <ol class="card-steps">
+        <li><b>Made from the agent&#x27;s own details.</b> Email, phone, website, social handles and the agent&#x27;s own avatar ribbons. Only public addresses. No secrets ever appear on the card.</li>
+        <li><b>One command, four outputs.</b> <code>python3 humanize.py card</code> writes <code>card.vcf</code>, <code>front.png</code>, <code>back.png</code> and <code>card.pdf</code> to <code>~/.humanize/card/</code>.</li>
+        <li><b>Scan to save.</b> The QR on the back encodes a compact vCard. Any phone camera can decode it and offer to save the contact, with no app needed.</li>
+        <li><b>Ready to print.</b> The PDF is 3.5 x 2 in at 300 dpi, the standard business-card trim size. Add bleed in your print shop&#x27;s template before printing.</li>
+        <li><b>Attach or link the vCard.</b> <code>card.vcf</code> can be attached to any email or linked from a profile. Recipients click it to import the contact directly into their contacts app.</li>
+      </ol>
+    </div>
+
+    <figure class="code reveal">
+      <pre><code>python3 humanize.py card --title "AI Agent" --tagline "Direct. Ships small things fast." --website "https://arivale.ai"
+# Writes ~/.humanize/card/card.vcf, front.png, back.png, card.pdf</code></pre>
+    </figure>
+  </div>
+</section>
+
 <!-- ============ DASHBOARD ============ -->
 <section class="sec tint" id="dashboard" aria-labelledby="h-dash">
   <div class="wrap">
@@ -453,7 +489,7 @@
       <img class="shot shot-dark" src="/img/dashboard-dark.webp" width="1440" height="900" alt="The Humanize dashboard in dark mode." loading="lazy">
     </div>
     <ul class="feat">
-      <li class="reveal"><h3>The agent rail</h3><p>Its live avatar, name and persona, both editable in place. Copy buttons for its email, number, wallet and handles. The state of its encrypted backup.</p></li>
+      <li class="reveal"><h3>The agent rail</h3><p>Its live avatar, name and persona, both editable in place. Copy buttons for its email, number, wallet and handles. The state of its encrypted backup. A card panel showing the front and back of the business card.</p></li>
       <li class="reveal"><h3>A grid you can steer</h3><p>Every layer is a card with its facts, an on and off switch, and a Provision or Modify button. Filter, search with <kbd>/</kbd>, and open a card for the full detail.</p></li>
       <li class="reveal"><h3>Tell it something</h3><p>Type a request and the agent reads it on its next turn. Rename it, turn off a network, ask for a number. It also holds the rules you set and the full activity log.</p></li>
       <li class="reveal"><h3>Back to the chat</h3><p>Open chat takes you back to whichever app your agent runs in: Claude Code, Codex, Cursor or VS Code. If the command fails it tells you why, instead of staying silent.</p></li>
@@ -470,10 +506,10 @@
       <div class="reveal">
         <h3 class="h3s">Where secrets live</h3>
         <ol class="tiers">
-          <li><b>The Mailgent vault</b><span>Passwords, 2FA secrets, recovery codes and account tokens, encrypted at rest. It also produces one-time codes.</span></li>
-          <li><b>The macOS Keychain</b><span>The few keys the agent needs to reach the vault and its services, and the self key. On Linux, the system keyring.</span></li>
+          <li><b>The machine&#x27;s secret store</b><span>Every password, token, service key and the self key, in the macOS Keychain or the Linux keyring, by name.</span></li>
+          <li><b>Local, on demand</b><span>Two-factor codes, generated by the same standard algorithm every authenticator app uses. No vendor ever sees one.</span></li>
           <li><b>The identity file</b><span>Pointers only, such as <code>secret:email.agentmail.api_key</code>. Safe to look at.</span></li>
-          <li><b>The encrypted backup</b><span>Identity, secrets and memory sealed with AES-256 and an HMAC, so a wrong key or a tampered file is refused.</span></li>
+          <li><b>The encrypted backup</b><span>Identity, secrets, memory and calendar sealed with AES-256 and an HMAC, so a wrong key or a tampered file is refused.</span></li>
         </ol>
       </div>
       <div class="reveal">
@@ -508,9 +544,7 @@
     </div>
     <div class="panel reveal" role="tabpanel" id="p-cc" aria-labelledby="t-cc">
       <p>The installer links Humanize into Claude Code as a skill, so you can type <code>/humanize</code> or just ask.</p>
-      <figure class="code copyable"><pre id="c1"><code>git clone https://github.com/0xArx/Humanize.git ~/.humanize/app
-ln -s ~/.humanize/app ~/.claude/skills/humanize
-python3 ~/.humanize/app/humanize.py init --name "Ari Vale"</code></pre><button class="copy" type="button" data-target="c1">Copy</button></figure>
+      <figure class="code copyable"><pre id="c1"><code>curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh -s -- --name "Ari Vale"</code></pre><button class="copy" type="button" data-target="c1">Copy</button></figure>
     </div>
     <div class="panel reveal" role="tabpanel" id="p-cx" aria-labelledby="t-cx" hidden>
       <p><code>SKILL.md</code> and <code>AGENTS.md</code> are plain markdown. Point the agent at the folder, or paste <code>SKILL.md</code> into its rules file, and give it a shell.</p>
@@ -532,13 +566,14 @@ python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type
       <div role="row"><code role="cell">status</code><span role="cell">What the agent is and what it has.</span></div>
       <div role="row"><code role="cell">doctor --fix</code><span role="cell">Check the machine and the install, and repair what it can.</span></div>
       <div role="row"><code role="cell">demo</code><span role="cell">A filled sample agent in a scratch folder, to see it first.</span></div>
+      <div role="row"><code role="cell">card [--title T] [--tagline T]</code><span role="cell">Generate the business card: vCard, front and back PNGs, PDF.</span></div>
       <div role="row"><code role="cell">self init | push | load</code><span role="cell">Back the agent up, encrypted, and load it on any machine.</span></div>
       <div role="row"><code role="cell">memory add | search</code><span role="cell">Its notes and the people it has met.</span></div>
       <div role="row"><code role="cell">secret list | migrate</code><span role="cell">See what is in the secret store, and move stray plain text into it.</span></div>
       <div role="row"><code role="cell">get | set | log</code><span role="cell">How the agent reads and writes what it owns, safely.</span></div>
     </div>
     <ul class="reqs reveal" aria-label="Requirements">
-      <li>Python 3.9 or newer</li><li>git</li><li>macOS or Linux</li><li>openssl, for the backup</li><li>Node 18, for two optional tools</li>
+      <li>Python 3.9 or newer</li><li>git</li><li>macOS or Linux</li><li>openssl, for the backup</li><li>Node 18, for two optional tools</li><li>Pillow, auto-installed, for the avatar and card</li>
     </ul>
   </div>
 </section>
@@ -556,7 +591,6 @@ python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type
     </div>
     <div class="ledger reveal" role="table" aria-label="How far each provider has been verified">
       <div role="row" class="lh"><span role="columnheader">Provider</span><span role="columnheader">Docs read</span><span role="columnheader">Reachable</span><span role="columnheader">Run live</span></div>
-      <div role="row"><span role="cell">Mailgent</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
       <div role="row"><span role="cell">AgentMail</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
       <div role="row"><span role="cell">AgentPhone</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
       <div role="row"><span role="cell">Dial</span><span role="cell" class="y">yes</span><span role="cell" class="y">yes</span><span role="cell" class="n">not yet</span></div>
@@ -575,7 +609,7 @@ python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type
     <details class="reveal"><summary>What does "humanize" mean here?</summary><p>Giving an agent the things a person has and it does not: a way to be reached, to pay, to prove who it is, to remember, and to keep existing. It is about capability and continuity, not about making an agent sound human.</p></details>
     <details class="reveal"><summary>Does the agent really sign up for everything itself?</summary><p>For the first ten steps, yes: inbox, phone, wallet, vault, calendar, memory and the rest, with no person and no cost. For services that show a CAPTCHA or forbid automated sign-up, such as GitHub, X and Discord, it prepares everything and asks you for one batched handoff. It never pretends otherwise.</p></details>
     <details class="reveal"><summary>What does it cost?</summary><p>The first ten steps cost nothing. The phone number has a five dollar credit and then three dollars a month. Everything paid after that, such as a card, a domain or a paid lookup, happens only when you fund it.</p></details>
-    <details class="reveal"><summary>Where do my agent's keys go?</summary><p>Not in a plain file. Passwords and account tokens go in the Mailgent vault. The few keys the agent needs to reach it go in the macOS Keychain or the Linux keyring. The identity file holds only pointers, and the backup is encrypted.</p></details>
+    <details class="reveal"><summary>Where do my agent's keys go?</summary><p>Not in a plain file. Everything, from its service keys to its passwords and 2FA secrets, goes in the macOS Keychain or the Linux keyring, by name. The identity file holds only pointers, and the backup is encrypted.</p></details>
     <details class="reveal"><summary>Can a website I visit control my agent?</summary><p>No. The dashboard runs on your machine only, answers only requests addressed to itself, refuses anything from another site, and needs a token and your access key. The first version was open to exactly that attack, so it is now a test that must keep failing.</p></details>
     <details class="reveal"><summary>What if I lose the self key?</summary><p>The backup cannot be recovered, by design. The key is shown once when the backup is created, and saved in your Keychain so pushes run unattended. Keep a copy somewhere safe.</p></details>
     <details class="reveal"><summary>Which platforms does it run on?</summary><p>macOS and Linux, with Python 3.9 or newer. On Windows, use WSL. It has no Python packages to install.</p></details>
@@ -587,7 +621,7 @@ python3 ~/.humanize/app/humanize.py doctor</code></pre><button class="copy" type
 
 <footer class="foot">
   <div class="wrap foot-in">
-    <div><b class="serif">Humanize</b><p>Version 0.2.0. MIT licensed. Made by 0xArx.</p></div>
+    <div><b class="serif">Humanize</b><p>Version 0.3.0. MIT licensed. Made by 0xArx.</p></div>
     <p class="fine">This page is a static site. It loads nothing from other websites, and runs no trackers.</p>
   </div>
 </footer>

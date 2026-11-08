@@ -9,14 +9,14 @@ from helpers import HomeCase, ROOT, store
 
 class MaskTests(unittest.TestCase):
     def test_hides_secrets_whatever_the_value_looks_like(self):
-        d = {"email": {"mailgent": {"address": "a@b.dev", "api_key": "mgnt-8f2a9c1d7e6b5a4f"}},
+        d = {"email": {"example": {"address": "a@b.dev", "api_key": "mgnt-8f2a9c1d7e6b5a4f"}},
              "wallet": {"evm": {"address": "0xabc", "privateKey": "0xdead" + "0" * 58}},
              "accounts": {"x": {"token": "has/slashes+and=signs=="}, "y": {"password": "pw"}},
              "phone": {"dial": {"auth": "~/.local/share/dial/auth.json"}},
              "ssh": {"public_key": "ssh-ed25519 AAAA"}}
         m = store.mask(d)
-        self.assertEqual(m["email"]["mailgent"]["address"], "a@b.dev")
-        self.assertTrue(m["email"]["mailgent"]["api_key"].startswith("•"))
+        self.assertEqual(m["email"]["example"]["address"], "a@b.dev")
+        self.assertTrue(m["email"]["example"]["api_key"].startswith("•"))
         self.assertNotIn("mgnt-8f2a", json.dumps(m))
         self.assertTrue(m["wallet"]["evm"]["privateKey"].startswith("•"))
         self.assertEqual(m["wallet"]["evm"]["address"], "0xabc")

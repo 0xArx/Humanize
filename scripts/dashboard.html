@@ -96,8 +96,6 @@
   .name:hover, .name:focus { border-bottom-color: var(--line2); }
   .persona { position: relative; z-index: 1; width: 100%; background: transparent; border: 1px solid transparent; border-radius: 10px; color: var(--ink2); font: 13px/1.5 var(--sans); text-align: center; resize: none; padding: 5px 8px; outline: none; margin-top: 4px; transition: border-color .15s; }
   .persona:hover, .persona:focus { border-color: var(--line2); background: var(--panel2); }
-  .did { position: relative; z-index: 1; margin-top: 8px; color: var(--mute); font: 10.5px/1.4 var(--mono); word-break: break-all; cursor: pointer; }
-  .did:hover { color: var(--ink2); }
   .cta { display: flex; gap: 8px; margin-top: 14px; position: relative; z-index: 1; }
   .cta button { flex: 1; padding: 11px 12px; border-radius: 12px; }
   .cta .primary { box-shadow: 0 0 0 1px color-mix(in oklab, var(--c1) 40%, transparent), 0 10px 28px -10px color-mix(in oklab, var(--c1) 60%, transparent); }
@@ -215,6 +213,27 @@
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   noscript { display: block; padding: 24px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reveal { opacity: 1; transform: none; } }
+
+  /* ---- business card panel ---- */
+  .bcard { padding: 10px 12px 14px; flex: none; }
+  /* bcard-wrap: no overflow:hidden so positioned layers (tooltips etc.) are not clipped; border-radius lives on the img itself */
+  .bcard-wrap { margin-bottom: 8px; line-height: 0; }
+  .bcard-img { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .bcard-ctrl { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .bcard-facing { font: 12px/1.4 var(--mono); color: var(--ink2); }
+  .bcard-dl { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .bcard-dl a { font: 12px/1.4 var(--mono); color: var(--ink2); background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 3px 8px; text-decoration: none; transition: border-color .15s, color .15s; }
+  .bcard-dl a:hover { border-color: var(--ink2); color: var(--ink); }
+  .bcard-dl a:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+  .bcard-missing { margin-bottom: 8px; }
+  .bcard-missing p { margin: 0 0 3px; font: 12px/1.4 var(--mono); color: var(--ink2); font-weight: 500; }
+  .bcard-missing ul { margin: 0; padding: 0 0 0 14px; font-size: 12px; color: var(--ink2); line-height: 1.6; }
+  .bcard-edit { display: flex; flex-direction: column; gap: 2px; }
+  .bcard-edit label { font: 12px/1.4 var(--mono); color: var(--ink2); display: block; margin-top: 6px; }
+  .bcard-edit input { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--ink); font: 13px var(--mono); outline: none; width: 100%; }
+  .bcard-edit input:focus { border-color: var(--c1); }
+  .bcard-err { font: 12px/1.4 var(--sans); color: var(--bad); min-height: 14px; display: block; }
+  .bcard-save-row { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -236,10 +255,39 @@
       <div class="orbwrap"><div class="halo"></div><canvas id="orb" width="336" height="336" aria-label="Agent avatar"></canvas></div>
       <input class="name" id="name" placeholder="Unnamed" title="Click to rename" spellcheck="false" aria-label="Agent name">
       <textarea class="persona" id="persona" rows="2" placeholder="Persona. Click to edit." aria-label="Persona"></textarea>
-      <div class="did" id="did" data-act="copy-did" title="Click to copy"></div>
       <div class="cta"><button class="primary" id="chat">Open chat</button></div>
     </section>
     <section class="card facts reveal" style="animation-delay:.06s"><h4 class="side-h">Reach it at</h4><div id="facts"></div></section>
+    <section class="card bcard reveal" id="bcard" style="animation-delay:.09s">
+      <h4 class="side-h">Business card</h4>
+      <div class="bcard-wrap">
+        <img id="bcardFront" class="bcard-img" alt="Business card front" src="/card/front.png">
+        <img id="bcardBack"  class="bcard-img" alt="Business card back"  src="/card/back.png" style="display:none">
+      </div>
+      <div class="bcard-ctrl">
+        <button class="sm ghost" id="bcardFlipBtn" data-act="bcardFlip" aria-pressed="false">Show back</button>
+        <span class="bcard-facing" id="bcardFacing" aria-live="polite" aria-atomic="true">Front</span>
+      </div>
+      <div class="bcard-dl">
+        <a href="/card/card.vcf"  download="card.vcf">vCard</a>
+        <a href="/card/card.pdf"  download="card.pdf">PDF</a>
+        <a href="/card/front.png" download="front.png">Front</a>
+        <a href="/card/back.png"  download="back.png">Back</a>
+      </div>
+      <div class="bcard-missing" id="bcardMissing" hidden></div>
+      <div class="bcard-edit">
+        <label for="bcardTitle">Title</label>
+        <input id="bcardTitle" maxlength="100" autocomplete="off" spellcheck="false" placeholder="e.g. AI Agent, Consultant">
+        <span class="bcard-err" id="bcardTitleErr" role="alert" aria-live="polite"></span>
+        <label for="bcardTagline">Tagline</label>
+        <input id="bcardTagline" maxlength="140" autocomplete="off" spellcheck="false" placeholder="e.g. Always learning.">
+        <span class="bcard-err" id="bcardTaglineErr" role="alert" aria-live="polite"></span>
+        <label for="bcardWebsite">Website</label>
+        <input id="bcardWebsite" maxlength="300" autocomplete="off" spellcheck="false" placeholder="https://example.com">
+        <span class="bcard-err" id="bcardWebsiteErr" role="alert" aria-live="polite"></span>
+        <div class="bcard-save-row"><button class="sm" id="saveBcard">Save</button></div>
+      </div>
+    </section>
     <section class="card sync reveal" style="animation-delay:.1s"><h4 class="side-h" style="padding:0">Self, stored</h4><div class="st" id="syncst">checking</div><div style="display:flex;gap:6px"><button class="sm" id="push">Push now</button><button class="sm ghost" id="syncrefresh">Refresh</button></div></section>
     <div class="foot" id="foot"></div>
   </aside>
@@ -300,11 +348,11 @@ const keys = o => (o && typeof o === "object" ? Object.keys(o) : []);
 const arr = v => (Array.isArray(v) ? v : []);   // a hand-edited file can hold the wrong type; the page must still load
 const real = v => v !== null && v !== undefined && v !== "" && v !== "not_provisioned";
 const LAYERS = [
-  { n: 0,  t: "Identity",   d: "Name, persona, and its own DID.",                            get: i => [["name", i.name], ["did", i.did]] },
-  { n: 1,  t: "Email",      d: "Inboxes it reads and sends from.",                           get: i => [["mailgent", g(i,"email.mailgent.address")], ["agentmail", g(i,"email.agentmail.address")]] },
+  { n: 0,  t: "Identity",   d: "Name and persona.",                                          get: i => [["name", i.name]] },
+  { n: 1,  t: "Email",      d: "An inbox it reads and sends from.",                           get: i => [["agentmail", g(i,"email.agentmail.address")]] },
   { n: 2,  t: "Phone",      d: "A real number for SMS, calls and OTPs.",                     get: i => [["agentphone", g(i,"phone.agentphone.number")], ["dial", g(i,"phone.dial.number")]] },
   { n: 3,  t: "Messaging",  d: "WhatsApp, Telegram, Discord, Slack, iMessage.",              get: i => keys(i.messaging).map(k => [k, "connected"]).concat(real(g(i,"whatsapp.status")) ? [["whatsapp", g(i,"whatsapp.status")]] : []) },
-  { n: 4,  t: "Money",      d: "x402 wallet, other wallets, Stripe, a card.",                get: i => [["usdc base", g(i,"wallet.mailgent_base_usdc")], ["evm", g(i,"wallet.evm.address")], ["solana", g(i,"wallet.solana.address")], ["stripe", g(i,"accounts.stripe") ? "connected" : null], ["card", g(i,"card.status")]] },
+  { n: 4,  t: "Money",      d: "A self-custodied wallet, Stripe, a card.",                    get: i => [["evm", g(i,"wallet.evm.address")], ["solana", g(i,"wallet.solana.address")], ["stripe", g(i,"accounts.stripe") ? "connected" : null], ["card", g(i,"card.status")]] },
   { n: 5,  t: "Browser",    d: "The browser it drives.",                                     get: i => [["browser", g(i,"browser.provider")]] },
   { n: 6,  t: "Accounts",   d: "Services it holds accounts on.",                             get: i => keys(i.accounts).map(k => [k, g(i,`accounts.${k}.username`) || g(i,`accounts.${k}.handle`) || "connected"]) },
   { n: 7,  t: "Avatar",     d: "The mark it wears on every account.",                        get: i => [["file", String(g(i,"face.photo") || "").split("/").pop() || null], ["seed", g(i,"face.seed")]] },
@@ -313,9 +361,9 @@ const LAYERS = [
   { n: 10, t: "Computer",   d: "A machine of its own.",                                      get: i => [["provider", g(i,"computer.provider")], ["id", g(i,"computer.id")], ["ssh", g(i,"ssh.public_key") ? "key set" : null]] },
   { n: 11, t: "Memory",     d: "Notes, people, and files it keeps.",                         get: i => [["local", g(i,"memory.local")], ["remote db", g(i,"memory.supabase")]] },
   { n: 12, t: "Brain",      d: "Extra models it can call.",                                  get: i => keys(i.brain).map(k => [k, "key set"]) },
-  { n: 13, t: "Keys, 2FA",  d: "Vault and authenticator.",                                   get: i => [["vault", g(i,"email.mailgent.api_key") ? "mailgent" : null], ["entries", keys(i.accounts).filter(k => g(i,`accounts.${k}.vault`)).join(", ") || null]] },
+  { n: 13, t: "Keys, 2FA",  d: "Vault and authenticator.",                                   get: i => [["vault", "local secret store"], ["entries", keys(i.accounts).filter(k => g(i,`accounts.${k}.vault`)).join(", ") || null]] },
   { n: 14, t: "Social",     d: "X, LinkedIn, Reddit, and more.",                             get: i => keys(i.social).map(k => [k, g(i,`social.${k}.handle`) ? "@" + g(i,`social.${k}.handle`) : "connected"]) },
-  { n: 15, t: "Calendar",   d: "Calendar and a booking page.",                               get: i => [["booking", g(i,"calendar.booking_url")], ["calendar", g(i,"email.mailgent.address") ? "mailgent" : null]] },
+  { n: 15, t: "Calendar",   d: "Calendar and a booking page.",                               get: i => [["local", g(i,"calendar.local") ? "calendar.ics" : null], ["booking", g(i,"calendar.booking_url")]] },
   { n: 16, t: "Address",    d: "A street address and physical mail.",                        get: i => [["address", [g(i,"address.line1"), g(i,"address.city")].filter(Boolean).join(", ") || null]] },
   { n: 17, t: "Domain",     d: "A domain, a site, email at its own domain.",                 get: i => [["domain", g(i,"domain.name")]] },
   { n: 18, t: "Signatures", d: "E-signatures and documents.",                                get: i => [["esign", g(i,"accounts.esign") ? "connected" : null]] },
@@ -341,6 +389,7 @@ const HOSTS = {
 const $ = s => document.querySelector(s);
 const TOKEN = document.querySelector('meta[name="hz-token"]').content;
 let ID = {}, META = {}, MTIME = -1, SEED = "", FILTER = "all", QUERY = "", TAB = "reqs", DRAWER = null, LAST_OK = 0, SELF = null;
+let BCARD_SHOWING = "front";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = t => t ? new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 const ago = t => { if (!t) return "never"; const s = Math.max(0, (Date.now() - new Date(t).getTime()) / 1000); return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + "m ago" : s < 86400 ? Math.floor(s / 3600) + "h ago" : Math.floor(s / 86400) + "d ago"; };
@@ -392,16 +441,15 @@ function setIfIdle(sel, v) { const el = $(sel); if (document.activeElement !== e
 function render() {
   const i = ID, states = allStates(i);
   setIfIdle("#name", i.name || ""); setIfIdle("#persona", i.persona || ""); setIfIdle("#rules", arr(i.rules).join("\n"));
-  $("#did").textContent = i.did || "no DID yet";
   $("#hostTxt").textContent = g(i, "host.app") || "unset";
   $("#ver").textContent = META.version ? "v" + META.version : "";
   $("#foot").textContent = `data: ${META.data_dir || ""}\nsecrets are masked here and never leave this machine`;
   $("#foot").style.whiteSpace = "pre-wrap";
 
-  const facts = [["email", g(i,"email.agentmail.address") || g(i,"email.mailgent.address")], ["phone", g(i,"phone.agentphone.number") || g(i,"phone.dial.number")], ["usdc", g(i,"wallet.mailgent_base_usdc")], ["github", g(i,"accounts.github.username")], ["booking", g(i,"calendar.booking_url")], ["domain", g(i,"domain.name")]].filter(x => real(x[1]));
+  const facts = [["email", g(i,"email.agentmail.address")], ["phone", g(i,"phone.agentphone.number") || g(i,"phone.dial.number")], ["wallet", g(i,"wallet.evm.address")], ["github", g(i,"accounts.github.username")], ["booking", g(i,"calendar.booking_url")], ["domain", g(i,"domain.name")]].filter(x => real(x[1]));
   $("#facts").innerHTML = facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span class="v" title="${esc(v)}">${esc(v)}</span><button class="sm ghost" data-act="copy" data-v="${esc(v)}" aria-label="Copy ${k}">copy</button></div>`).join("") || `<div class="side-note">Nothing yet. Its email, number and wallet appear here as it sets itself up.</div>`;
 
-  const basics = real(g(i,"email.mailgent.address")) || real(g(i,"email.agentmail.address")) || real(g(i,"phone.agentphone.number")) || real(g(i,"wallet.mailgent_base_usdc"));
+  const basics = real(g(i,"email.agentmail.address")) || real(g(i,"phone.agentphone.number")) || real(g(i,"wallet.evm.address"));
   const ob = $("#onboard");
   ob.hidden = basics;
   if (!basics) {
@@ -412,8 +460,8 @@ function render() {
   const live = states.filter(s => s.st).length, partial = states.filter(s => s.st === "partial").length, off = states.filter(s => !s.en).length;
   const pending = arr(i.dashboard_requests).filter(r => !r.done).length;
   const lastLog = arr(i.log).slice(-1)[0];
-  const reach = [g(i,"email.agentmail.address") || g(i,"email.mailgent.address"), g(i,"phone.agentphone.number") || g(i,"phone.dial.number"), keys(i.messaging)[0] ? keys(i.messaging).join(", ") : null].filter(real);
-  const wallet = g(i, "wallet.mailgent_base_usdc"), card = g(i, "card.status");
+  const reach = [g(i,"email.agentmail.address"), g(i,"phone.agentphone.number") || g(i,"phone.dial.number"), keys(i.messaging)[0] ? keys(i.messaging).join(", ") : null].filter(real);
+  const wallet = g(i, "wallet.evm.address"), card = g(i, "card.status");
   $("#kpis").innerHTML =
     `<div class="card kpi"><span class="lab">Layers provisioned</span><span class="val">${live}<small>of ${LAYERS.length}</small></span><span class="sub">${partial ? partial + " partly set up" : "all complete"}${off ? ", " + off + " switched off" : ""}</span><div class="bar"><i style="width:${Math.round((live / LAYERS.length) * 100)}%"></i></div></div>` +
     `<div class="card kpi"><span class="lab">Reachable at</span><div class="lines">${reach.length ? reach.slice(0, 3).map(r => `<span title="${esc(r)}">${esc(r)}</span>`).join("") : `<span style="color:var(--mute)">nowhere yet</span>`}</div></div>` +
@@ -438,6 +486,29 @@ function render() {
   $("#nRules").textContent = arr(i.rules).length || "";
   renderSelfChip();
   if (DRAWER !== null) renderDrawer();
+  // Business card panel: update img src with cache-buster and populate edit fields.
+  const bcMtime = META.mtime;
+  const bcFrontEl = document.getElementById("bcardFront");
+  const bcBackEl  = document.getElementById("bcardBack");
+  if (bcFrontEl && bcFrontEl.dataset.mtime !== String(bcMtime)) {
+    bcFrontEl.dataset.mtime = String(bcMtime);
+    bcFrontEl.src = "/card/front.png?v=" + bcMtime;
+  }
+  if (bcBackEl && bcBackEl.dataset.mtime !== String(bcMtime)) {
+    bcBackEl.dataset.mtime = String(bcMtime);
+    bcBackEl.src = "/card/back.png?v=" + bcMtime;
+  }
+  setIfIdle("#bcardTitle",   g(i, "business_card.title")   || "");
+  setIfIdle("#bcardTagline", g(i, "business_card.tagline") || "");
+  setIfIdle("#bcardWebsite", g(i, "business_card.website") || "");
+  const cardMeta = META.card || {}, missingFields = cardMeta.missing || [];
+  const bmEl = document.getElementById("bcardMissing");
+  if (bmEl) {
+    bmEl.hidden = !missingFields.length;
+    if (missingFields.length) {
+      bmEl.innerHTML = "<p>To complete this card:</p><ul>" + missingFields.map(s => "<li>" + esc(s) + "</li>").join("") + "</ul>";
+    }
+  }
 }
 function cardHtml(s) {
   const { L, all, have, en, st } = s, n = L.n;
@@ -505,6 +576,26 @@ async function saveHost() {
 async function syncStatus() { try { SELF = await api("/api/self/status"); } catch (e) { SELF = null; } renderSelfChip(); }
 async function pushSelf() { try { toast("Pushing"); await api("/api/self/push", {}); toast("Pushed"); } catch (e) { toast(e.message, 5000); } syncStatus(); }
 
+/* ---------- business card save ---------- */
+async function saveBcard() {
+  const tEl = $("#bcardTitle"), tlEl = $("#bcardTagline"), wEl = $("#bcardWebsite");
+  const tEr = $("#bcardTitleErr"), tlEr = $("#bcardTaglineErr"), wEr = $("#bcardWebsiteErr");
+  [tEr, tlEr, wEr].forEach(e => { if (e) e.textContent = ""; });
+  const title = tEl ? tEl.value.trim() : "", tagline = tlEl ? tlEl.value.trim() : "", website = wEl ? wEl.value.trim() : "";
+  let ok = true;
+  if (title.length > 100)   { if (tEr)  tEr.textContent  = "Max 100 characters"; ok = false; }
+  if (tagline.length > 140) { if (tlEr) tlEr.textContent = "Max 140 characters"; ok = false; }
+  if (website && !/^https?:\/\//i.test(website)) { if (wEr) wEr.textContent = "Must be an http or https URL, or empty"; ok = false; }
+  if (website.length > 300) { if (wEr)  wEr.textContent  = "Max 300 characters"; ok = false; }
+  if (!ok) return;
+  try {
+    await api("/api/update", { path: "business_card.title",   value: title   });
+    await api("/api/update", { path: "business_card.tagline", value: tagline });
+    await api("/api/update", { path: "business_card.website", value: website });
+    toast("Card saved"); MTIME = -1; load();
+  } catch (e) { toast(e.message, 3500); }
+}
+
 /* ---------- theme ---------- */
 function applyTheme(t) { document.documentElement.dataset.theme = t; $("#theme").textContent = t === "dark" ? "Light" : "Dark"; try { localStorage.setItem("hz-theme", t); } catch (e) {} }
 (function () {
@@ -524,12 +615,20 @@ document.addEventListener("click", e => {
   const el = e.target.closest("[data-act]"); if (!el) return;
   const act = el.dataset.act;
   if (act === "copy") { e.stopPropagation(); copy(el.dataset.v); }
-  else if (act === "copy-did") { if (ID.did) copy(ID.did); }
   else if (act === "chat") chat();
   else if (act === "close") closeDrawer();
   else if (act === "ask") { e.stopPropagation(); const n = +el.dataset.n, L = LAYERS.find(x => x.n === n), modify = el.dataset.mode === "modify"; ask(modify ? `Update layer ${n} (${L.t}): ` : `Provision layer ${n} (${L.t})`, modify); }
   else if (act === "done") done(+el.dataset.i);
   else if (act === "open") { if (!e.target.closest("button,label,input,a")) openDrawer(+el.dataset.n); }
+  else if (act === "bcardFlip") {
+    BCARD_SHOWING = BCARD_SHOWING === "front" ? "back" : "front";
+    const fEl = document.getElementById("bcardFront"), bEl = document.getElementById("bcardBack");
+    const flipBtn = document.getElementById("bcardFlipBtn"), facingEl = document.getElementById("bcardFacing");
+    if (fEl) fEl.style.display = BCARD_SHOWING === "front" ? "" : "none";
+    if (bEl) bEl.style.display = BCARD_SHOWING === "back"  ? "" : "none";
+    if (flipBtn) { flipBtn.setAttribute("aria-pressed", BCARD_SHOWING === "back" ? "true" : "false"); flipBtn.textContent = BCARD_SHOWING === "front" ? "Show back" : "Show front"; }
+    if (facingEl) facingEl.textContent = BCARD_SHOWING === "front" ? "Front" : "Back";
+  }
 });
 document.addEventListener("change", e => { const el = e.target.closest('[data-act="layer"]'); if (el) setLayer(+el.dataset.n, el.checked).catch(err => toast(err.message, 3500)); });
 document.addEventListener("keydown", e => {
@@ -547,6 +646,7 @@ $("#req").addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.k
 $("#chat").onclick = chat; $("#chipHost").onclick = openHost;
 $("#chipSelf").onclick = () => { if (SELF && SELF.initialized && SELF.unpushed_changes) pushSelf(); else syncStatus().then(() => toast(SELF && SELF.initialized ? "Self is up to date" : "Ask the agent to store itself first")); };
 $("#push").onclick = pushSelf; $("#syncrefresh").onclick = syncStatus;
+$("#saveBcard").onclick = saveBcard;
 $("#theme").onclick = () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 $("#h_app").onchange = fillHost; $("#h_cancel").onclick = () => $("#modal").classList.remove("show"); $("#h_save").onclick = saveHost;
 $("#h_test").onclick = async () => { const cmd = $("#h_cmd").value.trim(); if (!cmd) { toast("No command to test"); return; } try { await api("/api/update", { path: "host.open_command", value: cmd }); await api("/api/chat", {}); toast("Ran it. Did your chat come to the front?", 3800); } catch (e) { toast(e.message, 4500); } };

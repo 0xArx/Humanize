@@ -27,7 +27,7 @@ python3 humanize.py set browser.provider "claude-browser"     # or codex, playwr
 2. Fill the form with the agent's name (Layer 0) and email (Layer 1). Use the agent's number (Layer 2) if a phone is asked for.
 3. Submit, then switch to Layer 1 or 2 to fetch the code or link.
 4. Return, finish verification, and go straight to the token page for that service.
-5. Copy the token out of the page into the Mailgent vault (Layer 13), with a pointer in the identity file. Do not leave it only in the browser.
+5. Copy the token out of the page into the secret store (Layer 13), with a pointer in the identity file. Do not leave it only in the browser.
 
 ## When a page shows a CAPTCHA
 

@@ -21,7 +21,7 @@ python3 humanize.py set eyes.weather "open-meteo"
 
 ## When those are not enough
 
-**Apify: one signup, thousands of scrapers.** One account and one token give access to over 70,000 ready-made scrapers (Google Maps, Instagram, Amazon, LinkedIn and more), with $5 of free credit every month and no card. That replaces a separate signup for each site. Sign up at apify.com (email or GitHub; treat a CAPTCHA as a handoff, Layer 5), create a token at Console, Settings, Integrations, and store it in the vault.
+**Apify: one signup, thousands of scrapers.** One account and one token give access to over 70,000 ready-made scrapers (Google Maps, Instagram, Amazon, LinkedIn and more), with $5 of free credit every month and no card. That replaces a separate signup for each site. Sign up at apify.com (email or GitHub; treat a CAPTCHA as a handoff, Layer 5), create a token at Console, Settings, Integrations, and store it in the secret store (Layer 13).
 
 ```bash
 curl -s -X POST "https://api.apify.com/v2/actors/compass~google-maps-extractor/run-sync-get-dataset-items" \
@@ -30,12 +30,12 @@ curl -s -X POST "https://api.apify.com/v2/actors/compass~google-maps-extractor/r
 
 The synchronous call returns the dataset items and times out at 300 seconds; use the run endpoints for longer jobs. Input fields differ per Actor, so read the Actor's page first.
 
-**The x402 Bazaar: pay per call, no account at all.** Your Mailgent wallet (Layer 4) can pay any x402 service. Coinbase's public catalog lists them and needs no key:
+**The x402 Bazaar: pay per call, no account at all.** The agent's own wallet (Layer 4) can pay any x402 service directly, with the open-source `x402`/`@x402/*` client libraries. Coinbase's public catalog lists them and needs no key:
 
 ```bash
 curl -s "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources?limit=100&offset=0" | python3 -m json.tool | head -60
 ```
 
-It held 15,141 endpoints on 2026-09-21, including Exa web search and a people-enrichment provider, at prices from a fraction of a cent to about 15 cents a call. The `query` parameter had no effect when tested, so page with `limit` and `offset` and filter the `resource` and `description` fields yourself. Call one with `mailgent pay <resource url>`. The human funds the wallet once, in small amounts, and only when a paid lookup is worth it.
+It held 15,141 endpoints on 2026-09-21, including Exa web search and a people-enrichment provider, at prices from a fraction of a cent to about 15 cents a call. The `query` parameter had no effect when tested, so page with `limit` and `offset` and filter the `resource` and `description` fields yourself. Call one with the x402 client library and the Layer 4 wallet. The human funds the wallet once, in small amounts, and only when a paid lookup is worth it.
 
-> Status (2026-09-21): every free endpoint above answered 200; the Bazaar catalog answered with 15,141 entries. Apify's endpoint is from its API docs. No paid call was made.
+> Status (2026-09-22): every free endpoint above answered 200; the Bazaar catalog answered with 15,141 entries. Apify's endpoint is from its API docs. No paid call was made. See [Layer 4](04-money.md) and docs/providers.md for the x402 libraries.

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from helpers import ROOT
 
-TEXT = [p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.parts and "__pycache__" not in p.parts
+TEXT = [p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.parts and ".impeccable" not in p.parts and "__pycache__" not in p.parts
         and p.suffix in {".md", ".py", ".js", ".html", ".json", ".sh", ".yml", ".css", ".txt"} and "fonts" not in p.parts[-2:-1]]
 DOCS = [p for p in TEXT if p.suffix == ".md"]
 
@@ -48,7 +48,7 @@ class SkillTests(unittest.TestCase):
     def test_dashboard_only_reads_keys_the_template_has(self):
         html = (ROOT / "scripts" / "dashboard.html").read_text()
         tpl = json.loads((ROOT / "identity.template.json").read_text())
-        skip = {"layers", "accounts", "social", "messaging", "brain", "email.mailgent.api_key"}
+        skip = {"layers", "accounts", "social", "messaging", "brain"}
         for path in set(re.findall(r'\bg\(i,\s*"([a-z_.]+)"\)', html)):
             if path in skip or path.startswith(("layers.", "accounts.", "social.", "messaging.")):
                 continue
@@ -75,7 +75,8 @@ class LinkTests(unittest.TestCase):
     def test_files_named_in_backticks_exist(self):
         wanted = {"humanize.py", "install.sh", "identity.template.json", "scripts/dashboard.py", "scripts/dashboard.html", "scripts/orb.js",
                   "scripts/store.py", "scripts/keystore.py", "scripts/self.py", "scripts/avatar.py", "scripts/memory.py", "SECURITY.md", "CHANGELOG.md",
-                  "docs/architecture.md", "docs/providers.md", "docs/troubleshooting.md", "AGENTS.md", "LICENSE", "CONTRIBUTING.md"}
+                  "docs/architecture.md", "docs/providers.md", "docs/troubleshooting.md", "AGENTS.md", "LICENSE", "CONTRIBUTING.md",
+                  "scripts/card.py", "scripts/vcard.py", "scripts/qr.py"}
         for w in sorted(wanted):
             self.assertTrue((ROOT / w).exists(), w)
 
@@ -125,7 +126,7 @@ class HygieneTests(unittest.TestCase):
     def test_python_files_are_standard_library_only(self):
         import ast, sys
         std = set(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names") else None
-        local = {"store", "keystore", "memory", "avatar", "helpers", "dashboard", "self", "orb"}
+        local = {"store", "keystore", "memory", "avatar", "helpers", "dashboard", "self", "orb", "totp", "ical", "card", "vcard", "qr"}
         optional = {"PIL", "fcntl"}
         for p in list(ROOT.glob("*.py")) + list((ROOT / "scripts").glob("*.py")):
             for node in ast.walk(ast.parse(p.read_text())):

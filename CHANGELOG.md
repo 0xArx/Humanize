@@ -1,9 +1,22 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] - 2026-09-22
+
+### Changed
+- The repository is now public.
+- **Mailgent is removed.** It was used for the inbox, wallet, vault and calendar, but is not an established, vouched-for product the way AgentMail (YC-backed) and AgentPhone are, and Humanize should not route an agent's inbox, money and vault through a provider nobody can vouch for. AgentMail is now the only, primary email provider; a locally generated wallet, the local secret store, and a local calendar replace what Mailgent used to bundle. See `docs/providers.md` for exactly what was and was not found about it.
+- **The DID is removed from Layer 0.** A local `did:key` was attempted as Mailgent's replacement, entirely vendor-free, but the two `openssl` builds this project actually runs on could not reliably generate or sign with an Ed25519 key (LibreSSL cannot generate one at all; OpenSSL 1.1.1 cannot sign with it). Hand-rolling Ed25519 signing without a vetted library was rejected as too risky to ship. Layer 0 is now just a name and a persona.
+- Layer 1 (Email) now has one honest human step: AgentMail's own sign-up sends its verification code to a real human email, by design. This is documented as Humanize's one unavoidable human touchpoint, not routed around with a second, unvetted provider.
 
 ### Added
 - A website in `site/`, deployed on Vercel: what Humanize does, how to use it, the 24 layers with filters, a live avatar generator that recolours the page, the dashboard, security, status and FAQ. Strict CSP, no third-party requests, and tests that check every claim against the repo.
+- `scripts/totp.py`: local two-factor codes (RFC 6238 over RFC 4226, standard library only), checked against all five RFC 6238 Appendix B and all ten RFC 4226 Appendix D test vectors.
+- `scripts/ical.py`: a local calendar in the standard iCalendar (RFC 5545) format, backed up encrypted alongside memory.
+- `humanize.py totp` and `humanize.py calendar` commands.
+- `scripts/card.py`, `scripts/vcard.py`, `scripts/qr.py`: business card generator. `python3 humanize.py card` writes `card.vcf`, `front.png`, `back.png` and `card.pdf` to `$HUMANIZE_HOME/card/`. The back carries a QR code (pure-Python ISO 18004 encoder, verified against macOS CoreImage) that saves the agent as a contact when scanned. vCard values are sanitized against injection. Pillow draws the 1050 x 600 px (3.5 x 2 in at 300 dpi) card faces.
+
+### Fixed
+- The local calendar module was first written as `scripts/calendar.py` and imported as `import calendar`. That name collides with Python's own standard library `calendar` module: once anything else in the process imports it first (as `urllib.request` does, transitively, and `humanize.py` always does), Python's import cache silently hands back the stdlib module instead, regardless of `sys.path`. `humanize.py calendar add` failed with `AttributeError: module 'calendar' has no attribute 'add'` until this was caught by `tests/test_calendar.py` and the module was renamed to `scripts/ical.py`.
 
 ## [0.2.0] - 2026-09-21
 

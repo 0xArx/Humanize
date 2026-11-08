@@ -67,7 +67,7 @@ class SecurityTests(HomeCase):
         self.assertEqual(ok("name", "x" * 101), 400)
         self.assertEqual(ok("rules", "not a list"), 400)
         self.assertEqual(ok("rules", ["ok", 5]), 400)
-        for secret in ("wallet.evm.privateKey", "email.mailgent.api_key", "accounts.github.token", "log", "self_repo.url", "dashboard_requests"):
+        for secret in ("wallet.evm.privateKey", "email.example.api_key", "accounts.github.token", "log", "self_repo.url", "dashboard_requests"):
             self.assertEqual(ok(secret, "x"), 400, secret)
         for bad in ("javascript:alert(1)", "javascript://x%0Aalert(1)", "data://text/html,x", "file:///etc/passwd"):
             self.assertEqual(ok("host.chat_url", bad), 400, bad)
@@ -76,7 +76,7 @@ class SecurityTests(HomeCase):
 
     def test_the_page_and_api_never_reveal_secrets(self):
         store.update(self.identity, lambda d: d.update(wallet={"evm": {"address": "0xabc", "privateKey": "0xSECRETSECRETSECRETSECRET"}},
-                                                       email={"mailgent": {"address": "a@b.dev", "api_key": "mgnt-SECRETSECRET"}}))
+                                                       email={"example": {"address": "a@b.dev", "api_key": "mgnt-SECRETSECRET"}}))
         s, _, body = http(self.port, "GET", "/api/identity", headers={"X-Humanize-Token": self.token})
         self.assertEqual(s, 200)
         self.assertNotIn(b"SECRETSECRET", body)
@@ -290,6 +290,193 @@ class BehaviourTests(HomeCase):
         s, _, body = http(self.port, "GET", "/api/self/status", headers={"X-Humanize-Token": self.token})
         self.assertEqual(s, 200)
         self.assertFalse(json.loads(body)["initialized"])
+
+
+class CardRouteTests(HomeCase):
+    """Tests for /card/* routes: PNG, PDF, vCard."""
+
+    def setUp(self):
+        super().setUp()
+        self.port, self.token = self.dashboard()
+
+    def test_front_png_returns_png_magic_bytes_with_session(self):
+        s, h, body = http(self.port, "GET", "/card/front.png", headers={"Cookie": self.cookie})
+        self.assertEqual(s, 200)
+        self.assertEqual(h["content-type"], "image/png")
+        self.assertTrue(body.startswith(b"\x89PNG"), "response is not a PNG")
+
+    def test_back_png_returns_png_magic_bytes_with_session(self):
+        s, h, body = http(self.port, "GET", "/card/back.png", headers={"Cookie": self.cookie})
+        self.assertEqual(s, 200)
+        self.assertEqual(h["content-type"], "image/png")
+        self.assertTrue(body.startswith(b"\x89PNG"), "response is not a PNG")
+
+    def test_card_pdf_returns_pdf_with_attachment_disposition(self):
+        s, h, body = http(self.port, "GET", "/card/card.pdf", headers={"Cookie": self.cookie})
+        self.assertEqual(s, 200)
+        self.assertEqual(h["content-type"], "application/pdf")
+        self.assertTrue(body.startswith(b"%PDF"), "response is not a PDF")
+        cd = h.get("content-disposition", "")
+        self.assertIn("attachment", cd)
+        self.assertIn("card.pdf", cd)
+
+    def test_card_vcf_returns_vcard_with_attachment_disposition(self):
+        s, h, body = http(self.port, "GET", "/card/card.vcf", headers={"Cookie": self.cookie})
+        self.assertEqual(s, 200)
+        self.assertIn("text/vcard", h["content-type"])
+        self.assertIn("utf-8", h["content-type"])
+        self.assertIn(b"BEGIN:VCARD", body)
+        cd = h.get("content-disposition", "")
+        self.assertIn("attachment", cd)
+        self.assertIn("card.vcf", cd)
+
+    def test_card_routes_require_session(self):
+        for path in ("/card/front.png", "/card/back.png", "/card/card.pdf", "/card/card.vcf"):
+            s, _, _ = http(self.port, "GET", path)
+            self.assertEqual(s, 401, path)
+
+    def test_card_routes_refuse_forged_host(self):
+        for path in ("/card/front.png", "/card/back.png", "/card/card.pdf", "/card/card.vcf"):
+            s, _, _ = http(self.port, "GET", path, host="evil.example", headers={"Cookie": self.cookie})
+            self.assertEqual(s, 403, path)
+
+    def test_card_routes_refuse_foreign_origin(self):
+        for path in ("/card/front.png", "/card/back.png", "/card/card.pdf", "/card/card.vcf"):
+            s, _, _ = http(self.port, "GET", path, headers={"Cookie": self.cookie, "Origin": "https://evil.example"})
+            self.assertEqual(s, 403, path)
+
+    def test_card_error_response_has_no_traceback(self):
+        self.identity.write_text("{broken")
+        for path in ("/card/front.png", "/card/back.png", "/card/card.pdf", "/card/card.vcf"):
+            s, _, body = http(self.port, "GET", path, headers={"Cookie": self.cookie})
+            self.assertIn(s, (500, 200))
+            if s >= 400:
+                self.assertNotIn(b"Traceback", body)
+                self.assertNotIn(b"  File ", body)
+                self.assertIn(b'"error"', body)
+
+    def test_api_identity_includes_card_info(self):
+        s, _, body = http(self.port, "GET", "/api/identity", headers={"X-Humanize-Token": self.token})
+        self.assertEqual(s, 200)
+        j = json.loads(body)
+        self.assertIn("card", j)
+        self.assertIn("ready", j["card"])
+        self.assertIsInstance(j["card"]["missing"], list)
+
+    def test_card_filename_not_derived_from_agent_name(self):
+        # Content-Disposition must use fixed safe filenames, never the agent's name.
+        store.update(self.identity, lambda d: d.update(name="../../etc/passwd"))
+        for path, expected in (("/card/card.pdf", "card.pdf"), ("/card/card.vcf", "card.vcf")):
+            _, h, _ = http(self.port, "GET", path, headers={"Cookie": self.cookie})
+            cd = h.get("content-disposition", "")
+            self.assertIn(expected, cd)
+            self.assertNotIn("passwd", cd)
+
+
+class CardNoPillowTests(HomeCase):
+    """Image routes return 503 JSON when Pillow is missing; vCard still works."""
+
+    def setUp(self):
+        super().setUp()
+        # Block Pillow by planting a fake PIL in pydeps that raises ImportError.
+        # card.py prepends HUMANIZE_HOME/pydeps to sys.path before importing PIL,
+        # so our fake is found first in the fresh subprocess.
+        fake_pil = self.home / "pydeps" / "PIL"
+        fake_pil.mkdir(parents=True, exist_ok=True)
+        (fake_pil / "__init__.py").write_text('raise ImportError("test: PIL not available")\n')
+        self.port, self.token = self.dashboard()
+
+    def test_image_and_pdf_routes_return_503_json(self):
+        for path in ("/card/front.png", "/card/back.png", "/card/card.pdf"):
+            s, h, body = http(self.port, "GET", path, headers={"Cookie": self.cookie})
+            self.assertEqual(s, 503, f"{path}: expected 503, got {s}")
+            self.assertEqual(h.get("content-type", ""), "application/json")
+            self.assertIn(b"avatar", body, f"{path}: 503 body should mention 'avatar'")
+
+    def test_vcf_route_still_works_without_pillow(self):
+        s, _, body = http(self.port, "GET", "/card/card.vcf", headers={"Cookie": self.cookie})
+        self.assertEqual(s, 200)
+        self.assertIn(b"BEGIN:VCARD", body)
+
+
+class CardWritableTests(HomeCase):
+    """WRITABLE validation for business_card.* fields."""
+
+    def setUp(self):
+        super().setUp()
+        self.port, self.token = self.dashboard()
+
+    def _put(self, path, value):
+        return jpost(self.port, self.token, "/api/update", {"path": path, "value": value})[0]
+
+    def test_title_accepts_valid_string_and_rejects_bad(self):
+        self.assertEqual(self._put("business_card.title", "AI Agent"), 200)
+        self.assertEqual(self.load().get("business_card", {}).get("title"), "AI Agent")
+        self.assertEqual(self._put("business_card.title", "x" * 101), 400, "over 100 chars")
+        self.assertEqual(self._put("business_card.title", 42), 400, "not a string")
+
+    def test_tagline_accepts_valid_string_and_rejects_bad(self):
+        self.assertEqual(self._put("business_card.tagline", "Always learning."), 200)
+        self.assertEqual(self.load().get("business_card", {}).get("tagline"), "Always learning.")
+        self.assertEqual(self._put("business_card.tagline", "x" * 141), 400, "over 140 chars")
+        self.assertEqual(self._put("business_card.tagline", None), 400, "not a string")
+
+    def test_website_accepts_http_https_and_empty(self):
+        self.assertEqual(self._put("business_card.website", "https://example.com"), 200)
+        self.assertEqual(self._put("business_card.website", "http://example.com"), 200)
+        self.assertEqual(self._put("business_card.website", ""), 200)
+
+    def test_website_rejects_dangerous_schemes(self):
+        for bad in ("javascript:alert(1)", "data:text/html,<h1>x</h1>", "file:///etc/passwd",
+                    "blob:https://example.com/abc", "vbscript:msgbox(1)"):
+            self.assertEqual(self._put("business_card.website", bad), 400, bad)
+
+    def test_website_rejects_other_schemes_and_overlong(self):
+        self.assertEqual(self._put("business_card.website", "ftp://example.com"), 400, "ftp not allowed")
+        self.assertEqual(self._put("business_card.website", "https://x.com/" + "a" * 290), 400, "over 300 chars")
+        self.assertEqual(self._put("business_card.website", 42), 400, "not a string")
+
+    def test_website_rejects_non_http_scheme_with_slashes(self):
+        self.assertEqual(self._put("business_card.website", "cursor://"), 400, "cursor:// not allowed for bcard")
+
+
+class CardHtmlTests(HomeCase):
+    """Static checks on dashboard.html for the new business card section."""
+
+    def setUp(self):
+        super().setUp()
+        self.port, self.token = self.dashboard()
+
+    def test_html_has_no_inline_event_handlers(self):
+        _, _, page = http(self.port, "GET", "/", headers={"Cookie": self.cookie})
+        html = page.decode()
+        self.assertIsNone(re.search(r"\son(click|change|input|error|load|mouseover|keydown|submit|focus|blur)=", html),
+                          "inline event handler attribute found in dashboard HTML")
+
+    def test_bcard_section_is_present(self):
+        _, _, page = http(self.port, "GET", "/", headers={"Cookie": self.cookie})
+        html = page.decode()
+        self.assertIn('id="bcard"', html)
+        self.assertIn('id="bcardFront"', html)
+        self.assertIn('id="bcardBack"', html)
+        self.assertIn('id="bcardFlipBtn"', html)
+        self.assertIn('id="saveBcard"', html)
+
+    def test_download_links_use_safe_filenames(self):
+        _, _, page = http(self.port, "GET", "/", headers={"Cookie": self.cookie})
+        html = page.decode()
+        for name in ('download="card.vcf"', 'download="card.pdf"',
+                     'download="front.png"', 'download="back.png"'):
+            self.assertIn(name, html, f"{name} missing from page")
+
+    def test_html_loads_no_external_resources(self):
+        _, _, page = http(self.port, "GET", "/", headers={"Cookie": self.cookie})
+        html = page.decode()
+        external = r"(?:https?:)?//(?!127\.0\.0\.1|localhost)[a-z0-9.-]+\.[a-z]{2,}"
+        for pattern in (rf'\bsrc\s*=\s*["\']{external}', rf'<link[^>]+href\s*=\s*["\']{external}',
+                        rf'url\(\s*["\']?{external}'):
+            self.assertIsNone(re.search(pattern, html, re.I),
+                              f"page loads external resource matching: {pattern}")
 
 
 if __name__ == "__main__":

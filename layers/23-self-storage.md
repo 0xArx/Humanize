@@ -4,7 +4,7 @@
 **Human needed:** a git remote and a token (see Layer 6), and to keep the self key. **Cost:** free.
 **Identity keys:** `self_repo.url`, `self_repo.last_push`
 
-Stored in the repo: the identity file, the secrets it points at, and the local memory (all encrypted), the avatar, and a copy of the Humanize scripts. The encrypted parts are sealed with AES-256 and a key stretched from the **self key** with 200,000 rounds of PBKDF2, and sealed with an HMAC so a wrong key or a tampered file is refused before anything is decrypted. The repo should be private on top of that.
+Stored in the repo: the identity file, the secrets it points at, the local memory, and the local calendar (all encrypted), the avatar, and a copy of the Humanize scripts. The encrypted parts are sealed with AES-256 and a key stretched from the **self key** with 200,000 rounds of PBKDF2, and sealed with an HMAC so a wrong key or a tampered file is refused before anything is decrypted. The repo should be private on top of that.
 
 ## Set it up
 

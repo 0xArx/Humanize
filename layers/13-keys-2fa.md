@@ -1,33 +1,35 @@
 # Layer 13: Keys and 2FA
 
 **Gives the agent:** a place for every password, token and recovery code, and an authenticator that never blocks it.
-**Human needed:** none. **Cost:** included with Mailgent.
+**Human needed:** none. **Cost:** free.
 **Identity keys:** `accounts.<service>.vault` (a pointer to the entry name, never the secret)
 
-There are two places, and each secret has exactly one:
+Everything here is local. No vendor holds the vault, and no vendor generates the 2FA codes.
 
-- **The Mailgent vault** holds passwords, 2FA secrets, recovery codes, account tokens and extra wallet keys. It is encrypted at rest with AES-256-GCM and it also produces one time codes.
-- **The machine's secret store** (the macOS Keychain, the Linux keyring, or a private file where neither exists) holds the few keys the agent needs to reach the vault and its own services: the Mailgent, AgentMail and AgentPhone API keys, and the self key. `python3 humanize.py set <path> <value>` puts a secret-looking key there automatically and leaves only a pointer in the identity file; `python3 humanize.py get <path>` fetches it. Use `secret list` to see what is stored.
+## The vault
+
+The machine's own secret store, `scripts/keystore.py`: the macOS Keychain, the Linux keyring, or a private file where neither exists. It already holds any key that looks like a secret automatically; use it for anything else too, by name:
 
 ```bash
-# any credential
-mailgent vault store github --type LOGIN --data '{"username":"<u>","password":"<p>"}'
-mailgent vault store-api-key stripe --secret sk_test_...
-mailgent vault get github --json
-mailgent vault list
-
-# a 2FA secret is its own entry of type TOTP
-mailgent vault store github-2fa --type TOTP --data '{"secret":"<base32 secret from the QR page>"}'
-mailgent vault totp github-2fa               # prints the current 6 digit code and how long it lasts
-mailgent vault totp-use-backup github-2fa    # spends one single-use backup code
+python3 humanize.py secret set accounts.github.password "<generated password>"
+python3 humanize.py secret get accounts.github.password
+python3 humanize.py secret list
+python3 humanize.py secret delete accounts.github.password
 ```
 
-Credential types are `LOGIN`, `API_KEY`, `OAUTH`, `TOTP`, `SSH_KEY`, `DATABASE`, `SMTP`, `AWS`, `CERTIFICATE`, `CARD`, `SHIPPING_ADDRESS` and `CUSTOM`.
+Generate passwords with `openssl rand -base64 24`, one per service, never reused. Store recovery codes the same way, under a clear name like `accounts.github.recovery_codes`; they are the only way back in if a token is revoked.
 
-When a service offers an authenticator app, take the setup secret from its page (the `otpauth://` link or the plain secret), store it as a `TOTP` entry, and generate codes with `vault totp`. Store the recovery codes in the same entry's backup codes if the type supports it, otherwise as a `CUSTOM` entry. They are the only way back in if a token is revoked.
+## Two-factor codes, generated on this machine
 
-Generate passwords with `openssl rand -base64 24`, one per service, never reused.
+When a service offers an authenticator app instead of only SMS, take the setup secret from its page (the `otpauth://` link's `secret` parameter, or the plain text alternative most sites show next to the QR code), store it, and generate codes locally:
 
-The identity file keeps only pointers, for example `accounts.github.vault = "github"` or `secret:email.mailgent.api_key`, so the file can be shown or shared without leaking anything. The encrypted backup carries the secret store's contents too, so loading the agent on a new machine restores them into that machine's store.
+```bash
+python3 humanize.py totp new accounts.github.totp        # generates and stores a fresh secret, for setting up a NEW 2FA method
+python3 humanize.py totp code accounts.github.totp        # the current 6-digit code and how long it is valid
+```
 
-> Status (2026-09-21): the vault commands and the `totp` and `totp-use-backup` commands are in the Mailgent CLI's source. The `--data` field name for a TOTP entry (`secret`) is not documented; if the first `vault totp` call errors, the error names the field it wants.
+This is `scripts/totp.py`: RFC 6238 over HMAC-SHA1, standard library only, checked against the official RFC 4226 test vectors in `tests/test_totp.py`. No account, no app to install, no vendor that could see the codes.
+
+The identity file keeps only pointers, for example `accounts.github.vault = "accounts.github.password"`, so the file can be shown or shared without leaking anything. The encrypted backup carries the secret store's contents too, so loading the agent on a new machine restores them into that machine's store.
+
+> Status (2026-09-22): the secret store commands are exercised by the test suite against the real macOS Keychain and a file fallback. The TOTP implementation matches all five RFC 6238 Appendix B test vectors and all ten RFC 4226 Appendix D test vectors exactly.

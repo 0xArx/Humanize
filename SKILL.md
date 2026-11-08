@@ -1,6 +1,6 @@
 ---
 name: humanize
-description: Give an AI agent everything a person has, one step at a time: an email inbox, a phone number with SMS and voice, a wallet, accounts and 2FA, an avatar and voice, local memory, a machine of its own, a dashboard to watch and steer it, and an encrypted private repo so it can be loaded on any machine. Prefers services an agent can sign itself up for, then free local tools, and names the few steps that need a person. Use when the user says humanize, or the agent needs an inbox, a phone number, an OTP, an account, a wallet, a token, memory, or to be set up on a new machine.
+description: Give an AI agent everything a person has, one step at a time: an email inbox, a phone number with SMS and voice, a self-custodied wallet, accounts and 2FA, an avatar and voice, local memory, a machine of its own, a dashboard to watch and steer it, and an encrypted private repo so it can be loaded on any machine. Prefers services an agent can sign itself up for, then free local tools, and names the few steps that need a person. Use when the user says humanize, or the agent needs an inbox, a phone number, an OTP, an account, a wallet, a token, memory, or to be set up on a new machine.
 ---
 
 # Humanize
@@ -23,28 +23,28 @@ At the start of every turn, and after every provisioning step (details in [Layer
 
 Everything the agent owns lives in `~/.humanize/identity.json` (mode 600). Never edit it by hand: the dashboard writes to it too. Use `get`, `set`, `log`, `requests` and `done`, which lock the file so no edit is lost. `set` keeps text as text and parses booleans and lists where a key expects them (`set rules '["no spend over 50"]'`, `set layers.14.enabled false`); it refuses a value of the wrong type, and `--json` forces JSON. `identity.template.json` lists every key.
 
-Secrets never sit in that file. `set` sends any key that looks like a secret (`api_key`, `token`, `password`, `privateKey` and so on) to the machine's secret store, the macOS Keychain or the Linux keyring, and leaves a pointer such as `secret:email.mailgent.api_key` behind. `get` fetches the real value for you, so nothing else changes. Passwords, 2FA secrets and account tokens go in the Mailgent vault ([Layer 13](layers/13-keys-2fa.md)). That leaves one small set of keys in the secret store: the ones the agent needs to reach the vault and its services. `python3 humanize.py secret list` shows what is stored, and `doctor` warns if anything is left as plain text.
+Secrets never sit in that file. `set` sends any key that looks like a secret (`api_key`, `token`, `password`, `privateKey` and so on) to the machine's secret store, the macOS Keychain or the Linux keyring, and leaves a pointer such as `secret:email.agentmail.api_key` behind. `get` fetches the real value for you, so nothing else changes. Passwords, 2FA secrets and account tokens go in the same store by name ([Layer 13](layers/13-keys-2fa.md)); `python3 humanize.py totp` generates 2FA codes locally, and nothing else holds them. `python3 humanize.py secret list` shows what is stored, and `doctor` warns if anything is left as plain text.
 
 ## Choosing a provider
 
-In this order. Take the first that works.
+In this order. Take the first that works, and be honest when a step below turns out not to hold.
 
-1. **Agent-native.** The agent signs itself up with one API call and no person: Mailgent, AgentMail, AgentPhone.
-2. **Free and keyless.** A local tool or a public API with no account.
-3. **One signup that replaces many.** Apify (thousands of scrapers, one token), OpenRouter (hundreds of models, one key), the x402 Bazaar (paid APIs with no signup at all, paid from the agent's wallet).
+1. **Agent-native, and actually reachable.** The agent signs itself up with one API call: AgentMail (YC-backed), AgentPhone. Check `docs/providers.md` before trusting a claim that a service is agent-native; a provider that looked promising but could not be reached or whose own tooling did not work (see the note in [Layer 0](layers/00-identity.md)) was dropped, not kept as a fallback.
+2. **Free, local, and keyless.** A standard-library tool, an open protocol, or a public API with no account: a locally generated wallet, the x402 payment protocol, local TOTP codes, a local calendar file.
+3. **One signup that replaces many.** Apify (thousands of scrapers, one token), OpenRouter (hundreds of models, one key), the x402 Bazaar (paid APIs with no signup at all, paid from the agent's own wallet).
 4. **A single vendor's account.** Last resort.
 
-Before adding any provider, ask whether the agent can get it alone with its own email and number. If it cannot, say so and name the human step.
+Before adding any provider, ask whether the agent can get it alone with its own email and number, and whether the provider is one a person could point to and trust (a real company, a real product, not a marketing page with no working API). If either answer is no, say so and name the human step or the risk plainly, in the layer file and in `docs/providers.md`.
 
 ## The layers
 
 | # | Layer | Gives the agent | A person is needed for |
 |---|-------|-----------------|------------------------|
-| 0 | [Identity](layers/00-identity.md) | a name, a persona, a DID | nothing |
-| 1 | [Email](layers/01-email.md) | inboxes to read and send from | nothing |
+| 0 | [Identity](layers/00-identity.md) | a name, a persona and a business card | nothing |
+| 1 | [Email](layers/01-email.md) | an inbox to read and send from | one real email address, once, to relay one code |
 | 2 | [Phone](layers/02-phone.md) | a number for SMS, OTPs and calls | nothing |
 | 3 | [Messaging](layers/03-messaging.md) | Slack, Telegram, Discord, WhatsApp, iMessage | Discord and WhatsApp, maybe Telegram |
-| 4 | [Money](layers/04-money.md) | an x402 wallet, Stripe, a card | funding once, a card's ID check |
+| 4 | [Money](layers/04-money.md) | a self-custodied wallet, Stripe, a card | funding once, a card's ID check |
 | 5 | [Browser](layers/05-browser.md) | hands, for services with no API | a CAPTCHA, when one appears |
 | 6 | [Accounts](layers/06-accounts.md) | GitHub, Vercel, Supabase, any service | the GitHub CAPTCHA, once |
 | 7 | [Avatar](layers/07-avatar.md) | a mark unique to this agent | nothing |
@@ -53,7 +53,7 @@ Before adding any provider, ask whether the agent can get it alone with its own 
 | 10 | [Computer](layers/10-computer.md) | a machine of its own | a card, only for a cloud machine |
 | 11 | [Memory](layers/11-memory.md) | searchable notes and people | nothing |
 | 12 | [Brain](layers/12-brain.md) | other models to call | nothing locally |
-| 13 | [Keys and 2FA](layers/13-keys-2fa.md) | a vault and an authenticator | nothing |
+| 13 | [Keys and 2FA](layers/13-keys-2fa.md) | a local vault and a local authenticator | nothing |
 | 14 | [Social](layers/14-social.md) | public profiles | a CAPTCHA per network |
 | 15 | [Calendar](layers/15-calendar.md) | a calendar and a booking page | nothing |
 | 16 | [Address](layers/16-address.md) | a street address and mail | a notarised form |
@@ -67,34 +67,39 @@ Before adding any provider, ask whether the agent can get it alone with its own 
 
 ## What needs a person
 
-The agent does everything else itself, including every verification code, because the code is always in its own inbox or number. These are the only human steps, and each is reached only when its layer is wanted:
+The agent does almost everything else itself, including every verification code after the first, because the code is always in its own inbox or number from Layer 1 onward. These are the only human steps, and each is reached only when its layer is wanted:
 
 | When | What the person does | Why the agent cannot |
 |------|----------------------|----------------------|
+| Layer 1, once, first | Gives a real email address and relays one 6-digit code | AgentMail sends its sign-up OTP to the human who owns the agent, by design |
 | Any CAPTCHA | Clicks through it | Agents cannot pass them, and most sign-up terms forbid automated accounts |
 | GitHub, X, Reddit, LinkedIn, Discord | Creates the account from details the agent prepared | CAPTCHA and terms of service |
 | A backup repo | Makes an empty private repo and a token limited to it, or a GitHub account for the agent | Same as above |
-| A paid lookup or service | Sends USDC to the agent's wallet once | Money has to come from somewhere |
 | A card | One identity check with the issuer | Card networks require a verified person |
 | Stripe payouts | Identity and bank details | The account holder must be a legal person |
 | A virtual mailbox | Signs and notarises a USPS form | A federal requirement |
 | A company | Signs the formation papers | The owner must be a person |
 | The end of setup | Says which rules, if any, to follow | Only they know |
 
+Funding the wallet (Layer 4) is not in this table: it is optional, only needed once something paid is worth doing, and never blocks the setup below.
+
 ## One-shot bootstrap
 
-**Phase A: no person needed.** Every step is agent-native or local.
+**Step 0: the one thing that needs a person, done first, immediately.** Ask for a real email address and, a minute later, the 6-digit code that lands in it ([Layer 1](layers/01-email.md)). This is the only code the agent will ever ask a human for.
+
+**Phase A: everything else, agent-only.**
 
 1. Pick a name and persona and check the handle ([Layer 0](layers/00-identity.md)).
 2. `python3 humanize.py init --name "<name>" --persona "<persona>"`. The dashboard is now open for the human to watch.
-3. Mailgent sign-up: inbox, DID, vault, calendar, wallet ([Layer 1](layers/01-email.md)).
-4. AgentMail sign-up with the Mailgent address as the human email, read the code, verify. Skip it if it refuses that domain.
-5. AgentPhone sign-up with the agent's own email, read the code, verify, store the key and number ([Layer 2](layers/02-phone.md)).
-6. Pick an AgentPhone voice and a local voice ([Layer 8](layers/08-voice.md)).
-7. Record the free tools and the browser, make an SSH key, write a first memory ([Layers 9, 5, 10, 11](layers/09-eyes.md)).
-8. Check the calendar works ([Layer 15](layers/15-calendar.md)).
+3. AgentMail sign-up with the address from Step 0 as the human email, verify with the code Step 0 already has ([Layer 1](layers/01-email.md)).
+4. AgentPhone sign-up with the agent's own AgentMail inbox as the OTP recipient, read the code itself this time, verify, store the key and number ([Layer 2](layers/02-phone.md)).
+5. Generate a wallet locally ([Layer 4](layers/04-money.md)).
+6. Draw the avatar and pick an AgentPhone voice ([Layers 7, 8](layers/07-avatar.md)).
+7. Record the free eyes tools and the browser, make an SSH key, write a first memory ([Layers 9, 5, 10, 11](layers/09-eyes.md)).
+8. Check the local calendar works ([Layer 15](layers/15-calendar.md)).
+9. Generate the business card ([Layer 0](layers/00-identity.md)): `python3 humanize.py card --title "<title>" --tagline "<tagline>"`. This writes `card.vcf`, `front.png`, `back.png` and `card.pdf` to `$HUMANIZE_HOME/card/`.
 
-The agent now has an inbox, a number, a wallet, a DID, a vault, a calendar, an avatar, a voice, memory and a dashboard, at no cost and with nobody's help.
+The agent now has an inbox, a number, a wallet, an avatar, a voice, memory and a dashboard, with one email address and one code from the human, and nothing else.
 
 **Phase B: one handoff, batched into a single message.** Do not drip questions. Prepare everything, then send the human one message like this:
 
@@ -115,4 +120,4 @@ Whatever they answer, now or later, goes into `rules` (`python3 humanize.py set 
 
 ## When something goes wrong
 
-`python3 humanize.py doctor` checks the machine and the install and `doctor --fix` repairs what it can. The dashboard log is `~/.humanize/dashboard.log`. See [docs/troubleshooting.md](docs/troubleshooting.md), and [docs/providers.md](docs/providers.md) for how far each provider's instructions have been verified.
+`python3 humanize.py doctor` checks the machine and the install and `doctor --fix` repairs what it can. The dashboard log is `~/.humanize/dashboard.log`. See [docs/troubleshooting.md](docs/troubleshooting.md), and [docs/providers.md](docs/providers.md) for how far each provider's instructions have been verified, including one that was tried, found unreliable, and removed.

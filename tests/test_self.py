@@ -14,7 +14,7 @@ class SelfStorageTests(HomeCase):
         subprocess.run(["git", "init", "-q", "--bare", str(self.bare)], check=True)
         self.init("Sana Okafor")
         self.hz("stop")
-        store.update(self.identity, lambda d: d.update(email={"mailgent": {"address": "a@b.dev", "api_key": "mgnt-VERYSECRETVALUE123"}}))
+        store.update(self.identity, lambda d: d.update(email={"example": {"address": "a@b.dev", "api_key": "mgnt-VERYSECRETVALUE123"}}))
         self.env["HUMANIZE_SELF_KEY"] = "test-self-key-0123456789"
 
     def selfpy(self, *args, check=True, env=None, home=None):

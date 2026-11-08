@@ -12,7 +12,7 @@ United States rules (USPS Form 1583) require a notarised ID from a real person b
 python3 humanize.py set address.line1 "<street>"
 python3 humanize.py set address.city "<city>"
 python3 humanize.py set address.provider "<provider>"
-mailgent vault store-address home --recipient "<name>" --line1 "<street>" --city "<city>" --state "<st>" --postcode "<zip>" --country US
+python3 humanize.py secret set address.full "<full mailing address and any account number>"
 ```
 
 To send physical letters from an API, Lob (`POST https://api.lob.com/v1/letters`) and PostGrid both work; each needs an account and a payment method (Layer 4).

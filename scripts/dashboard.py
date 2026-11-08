@@ -38,12 +38,16 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import store  # noqa: E402
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 MAX_BODY = 64 * 1024
 IMG_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 IMG_MAGIC = {".png": b"\x89PNG", ".jpg": b"\xff\xd8", ".jpeg": b"\xff\xd8", ".webp": b"RIFF", ".gif": b"GIF8"}
 BLOCKED_SCHEMES = {"javascript", "data", "vbscript", "file", "blob"}
 LAYER = r"(?:[0-9]|1[0-9]|2[0-3])"
+
+_RENDER_SEM   = threading.Semaphore(2)   # limit concurrent card renders
+_RENDER_LOCK  = threading.Lock()
+_RENDER_CACHE = {}   # {(mtime_ns, filename): bytes}
 
 
 def _str(n):
@@ -57,6 +61,16 @@ def _url(v):
         return True
     m = re.match(r"^([a-z][a-z0-9+.\-]*)://", v, re.I)
     return bool(m) and m.group(1).lower() not in BLOCKED_SCHEMES
+
+
+def _url_bc(v):
+    """Accept empty string or http/https URL only, up to 300 chars."""
+    if not isinstance(v, str) or len(v) > 300:
+        return False
+    if v == "":
+        return True
+    m = re.match(r"^([a-z][a-z0-9+.\-]*)://", v, re.I)
+    return bool(m) and m.group(1).lower() in ("http", "https")
 
 
 def _rules(v):
@@ -73,6 +87,9 @@ WRITABLE = [
     (re.compile(r"^host\.chat_url$"), _url),
     (re.compile(rf"^layers\.{LAYER}\.enabled$"), lambda v: isinstance(v, bool)),
     (re.compile(r"^(accounts|social|messaging)\.[a-z0-9_]+\.enabled$"), lambda v: isinstance(v, bool)),
+    (re.compile(r"^business_card\.title$"),   _str(100)),
+    (re.compile(r"^business_card\.tagline$"), _str(140)),
+    (re.compile(r"^business_card\.website$"), _url_bc),
 ]
 
 
@@ -223,13 +240,30 @@ class Handler(BaseHTTPRequestHandler):
                 if not self._session_ok():
                     return self._fail(401, "open the dashboard with: python3 humanize.py open")
                 return self._avatar()
+            mc = re.match(r"^/card/(front\.png|back\.png|card\.pdf|card\.vcf)$", path)
+            if mc:
+                if not self._guard(need_token=False):
+                    return
+                if not self._session_ok():
+                    return self._fail(401, "open the dashboard with: python3 humanize.py open")
+                return self._card_file(mc.group(1))
             if path == "/api/identity":
                 if not self._guard():
                     return
                 d = store.load(self.identity)
                 mtime = self.identity.stat().st_mtime_ns if self.identity.exists() else 0
                 seed = store.get(d, "face.seed") or d.get("name") or "agent"
-                return self._send(200, {"identity": store.mask(d), "mtime": mtime, "seed": seed, "version": VERSION, "app_dir": str(HERE.parent), "data_dir": str(self.identity.parent)})
+                card_info = {"ready": False, "missing": []}
+                try:
+                    _vc = __import__("vcard")
+                    _f = _vc.fields(d)
+                    card_info = {
+                        "ready": bool(_f.get("name") and (_f.get("email") or _f.get("phone"))),
+                        "missing": _f.get("missing", []),
+                    }
+                except Exception:
+                    pass
+                return self._send(200, {"identity": store.mask(d), "mtime": mtime, "seed": seed, "version": VERSION, "app_dir": str(HERE.parent), "data_dir": str(self.identity.parent), "card": card_info})
             if path == "/api/self/status":
                 if not self._guard():
                     return
@@ -254,6 +288,51 @@ class Handler(BaseHTTPRequestHandler):
         if not ok or not data.startswith(IMG_MAGIC[ext]):
             return self._fail(404, "no avatar")
         self._send(200, data, IMG_TYPES[ext], {"Cache-Control": "no-cache"})
+
+    def _card_file(self, filename):
+        """Serve card.vcf, front.png, back.png, or card.pdf with session protection."""
+        d = store.load(self.identity)
+        mtime = self.identity.stat().st_mtime_ns if self.identity.exists() else 0
+        try:
+            card = __import__("card")
+        except Exception:
+            return self._fail(503, "card module unavailable. Run: python3 humanize.py avatar")
+
+        if filename.endswith(".vcf"):
+            text = card.vcard_text(d)
+            body = text.encode("utf-8")
+            return self._send(200, body, "text/vcard; charset=utf-8", {
+                "Content-Disposition": 'attachment; filename="card.vcf"',
+                "Cache-Control": "no-cache",
+            })
+
+        if not card.have_pillow():
+            return self._send(503, {"error": "Pillow is not installed. Run: python3 humanize.py avatar"})
+
+        key = (mtime, filename)
+        with _RENDER_LOCK:
+            cached = _RENDER_CACHE.get(key)
+        if cached is None:
+            with _RENDER_SEM:
+                if filename == "front.png":
+                    cached = card.png_bytes(d, "front")
+                elif filename == "back.png":
+                    cached = card.png_bytes(d, "back")
+                else:
+                    cached = card.pdf_bytes(d)
+            with _RENDER_LOCK:
+                _RENDER_CACHE[key] = cached
+                while len(_RENDER_CACHE) > 6:
+                    try:
+                        del _RENDER_CACHE[next(iter(_RENDER_CACHE))]
+                    except (StopIteration, KeyError):
+                        break
+
+        ctype = "image/png" if filename.endswith(".png") else "application/pdf"
+        extra = {"Cache-Control": "no-cache"}
+        if filename == "card.pdf":
+            extra["Content-Disposition"] = 'attachment; filename="card.pdf"'
+        self._send(200, cached, ctype, extra)
 
     # ---- POST -----------------------------------------------------------
     def do_POST(self):

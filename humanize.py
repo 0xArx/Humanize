@@ -10,6 +10,8 @@
   open                       open the dashboard in your browser (starts it if needed)
   stop                       stop the background dashboard
   avatar [seed]              (re)draw the avatar PNG
+  card [--out DIR] [--title T] [--tagline T] [--website URL] [--vcard] [--open]
+        generate a print-ready business card (front.png, back.png, card.pdf, card.vcf)
   self <init|push|pull|load|unlock|status> ...   keep the agent in a private git repo, load it anywhere
   demo                       a filled sample agent in a scratch folder, to see the dashboard
 
@@ -19,6 +21,8 @@
   memory people                             who it knows
 
   secret backend|list|get|set|delete|migrate   the operating system's secret store (Keychain on macOS)
+  totp new [name] | code SECRET-OR-NAME | uri SECRET LABEL   local 2FA codes, RFC 6238, no vendor
+  calendar add|list|delete ...       a local iCalendar file (~/.humanize/calendar.ics), no account
 
   For the agent, so it never hand-edits the identity file:
   get PATH [--pointer]       print one value, e.g. get email.agentmail.address; a stored secret is fetched for you
@@ -30,7 +34,7 @@
   chat                       press the dashboard's Open chat button
 
 Data lives in $HUMANIZE_HOME (default ~/.humanize). macOS and Linux; on Windows use WSL.
-Standard library only. Pillow (for the avatar PNG) is installed on demand into ~/.humanize/pydeps.
+Standard library only. Pillow (for the avatar and card PNGs) is installed on demand into ~/.humanize/pydeps.
 """
 import argparse
 import json
@@ -57,7 +61,7 @@ sys.path.insert(0, str(SCRIPTS))
 import keystore  # noqa: E402
 import store  # noqa: E402
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 LAYERS = range(0, 24)
 
 FIRST = ["Ari", "Mira", "Tomas", "Noor", "Iris", "Kai", "Lena", "Omar", "Sana", "Jude", "Nadia", "Rafi", "Elio", "Zara", "Idris", "Maya"]
@@ -192,16 +196,32 @@ def start_dashboard(port, open_browser):
 
 
 # ---------------------------------------------------------------- avatar
+def _ensure_pillow():
+    """Ensure Pillow is in ~/.humanize/pydeps. Returns True on success."""
+    pd = home() / "pydeps"
+    test = subprocess.run(
+        [sys.executable, "-c", f"import sys; sys.path.insert(0, {str(pd)!r}); import PIL"],
+        capture_output=True)
+    if test.returncode == 0:
+        return True
+    sys.stderr.write("Pillow not found. Installing into ~/.humanize/pydeps...\n")
+    pip = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check",
+         "--target", str(pd), "pillow"],
+        capture_output=True, text=True)
+    if pip.returncode:
+        sys.stderr.write("could not install Pillow: " +
+                         (pip.stderr.strip().splitlines() or ["unknown error"])[-1] + "\n")
+        return False
+    return True
+
+
 def make_avatar(seed, out):
     """Returns the PNG path, or None if Pillow is unavailable. Pillow goes to ~/.humanize/pydeps."""
     cmd = [sys.executable, str(SCRIPTS / "avatar.py"), seed, str(out), "1024"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode == 3:
-        pd = home() / "pydeps"
-        pip = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "--target", str(pd), "pillow"],
-                             capture_output=True, text=True)
-        if pip.returncode:
-            sys.stderr.write("could not install Pillow: " + (pip.stderr.strip().splitlines() or ["unknown error"])[-1] + "\n")
+        if not _ensure_pillow():
             return None
         r = subprocess.run(cmd, capture_output=True, text=True)
     return str(out) if r.returncode == 0 else None
@@ -261,11 +281,21 @@ def cmd_status(a):
         die("no identity yet. Run: python3 humanize.py init")
     d = load_identity()
     info = dash_alive()
-    rows = [("version", __version__), ("data dir", str(home())), ("name", d.get("name")),
-            ("email", store.get(d, "email.agentmail.address") or store.get(d, "email.mailgent.address")),
-            ("phone", store.get(d, "phone.agentphone.number")), ("github", store.get(d, "accounts.github.username")),
-            ("wallet", store.get(d, "wallet.mailgent_base_usdc")), ("self repo", store.get(d, "self_repo.url")),
+    _name = d.get("name") or ""
+    _email = store.get(d, "email.agentmail.address")
+    _phone = store.get(d, "phone.agentphone.number")
+    if _name and (_email or _phone):
+        _card = "ready"
+    elif not _name:
+        _card = "missing name"
+    else:
+        _card = "missing email and phone"
+    rows = [("version", __version__), ("data dir", str(home())), ("name", _name or None),
+            ("email", _email),
+            ("phone", _phone), ("github", store.get(d, "accounts.github.username")),
+            ("wallet", store.get(d, "wallet.evm.address")), ("self repo", store.get(d, "self_repo.url")),
             ("host", store.get(d, "host.app")),
+            ("business card", _card),
             ("dashboard", f"http://127.0.0.1:{info['port']}" if info else "not running"),
             ("pending requests", len([r for r in d.get("dashboard_requests", []) if not r.get("done")]))]
     for k, v in rows:
@@ -284,11 +314,11 @@ def cmd_doctor(a):
     v = sys.version_info
     row("ok" if v >= (3, 9) else "fail", f"python {v.major}.{v.minor}.{v.micro}" + ("" if v >= (3, 9) else " (need 3.9 or newer)"))
     row("ok" if platform.system() in ("Darwin", "Linux") else "fail", f"platform {platform.system()}" + ("" if platform.system() in ("Darwin", "Linux") else " (use WSL)"))
-    for tool, needed_for, hard in (("git", "storing the agent in a repo", False), ("openssl", "encrypting the agent for storage", False), ("node", "the Mailgent and Dial command line tools", False)):
+    for tool, needed_for, hard in (("git", "storing the agent in a repo", False), ("openssl", "encrypting the agent for storage", False), ("node", "the Dial command line tool", False)):
         path = shutil.which(tool)
         row("ok" if path else "warn", f"{tool} {'found' if path else 'not found, needed for ' + needed_for}")
     pil = subprocess.run([sys.executable, "-c", f"import sys;sys.path.insert(0,{str(home() / 'pydeps')!r});import PIL;print(PIL.__version__)"], capture_output=True, text=True)
-    row("ok" if pil.returncode == 0 else "warn", f"Pillow {pil.stdout.strip()}" if pil.returncode == 0 else "Pillow not installed; `python3 humanize.py avatar` installs it into ~/.humanize/pydeps")
+    row("ok" if pil.returncode == 0 else "warn", f"Pillow {pil.stdout.strip()}" if pil.returncode == 0 else "Pillow not installed; `python3 humanize.py avatar` installs it into ~/.humanize/pydeps (also needed for `humanize.py card`)")
     missing = [n for n in ("humanize.py", "identity.template.json", "SKILL.md", "scripts/dashboard.py", "scripts/dashboard.html", "scripts/orb.js", "scripts/store.py", "scripts/self.py", "scripts/avatar.py", "scripts/fonts/fonts.css")
                if not (ROOT / n).exists()]
     layer_docs = sorted((ROOT / "layers").glob("[0-9][0-9]-*.md"))
@@ -378,6 +408,56 @@ def cmd_avatar(a):
     print(out)
     if ident_path().exists():
         store.update(ident_path(), lambda d: d.__setitem__("face", {"photo": out, "seed": store.get(d, "face.seed") or seed}))
+
+
+def cmd_card(a):
+    if not ident_path().exists():
+        die("no identity yet. Run: python3 humanize.py init")
+    # Validate website scheme before storing (same rules as vcard._normalize_url).
+    if a.website is not None:
+        _ws = a.website.strip()
+        _bad_scheme = re.compile(r"^(javascript|data|file|vbscript|about)\s*:", re.I)
+        if _bad_scheme.match(_ws) or ("://" in _ws and not re.match(r"^https?://", _ws, re.I)):
+            die(f"website scheme not allowed: {a.website!r}. Use https://, http://, or a bare domain.")
+    # Persist any field overrides to identity first
+    if any(x is not None for x in [a.title, a.tagline, a.website]):
+        def _apply(d):
+            bc = d.setdefault("business_card", {})
+            if a.title is not None:
+                bc["title"] = a.title
+            if a.tagline is not None:
+                bc["tagline"] = a.tagline
+            if a.website is not None:
+                bc["website"] = a.website
+            store.log_entry(d, "business_card fields updated via card command", by="humanize.py")
+        store.update(ident_path(), _apply)
+    d = load_identity()
+    card = __import__("card")
+    # --vcard: just print the vCard text, no Pillow needed
+    if a.vcard:
+        print(card.vcard_text(d))
+        return
+    # Ensure Pillow is available before rendering
+    if not card.have_pillow():
+        if not _ensure_pillow():
+            die("Pillow could not be installed. Run: python3 humanize.py avatar")
+        import importlib
+        importlib.reload(card)
+    out_dir = Path(a.out) if a.out else home() / "card"
+    try:
+        files = card.write_all(d, out_dir)
+    except RuntimeError as e:
+        die(str(e))
+    for k, v in sorted(files.items()):
+        print(f"{k}: {v}")
+    # Print missing-fields note so the agent knows what to provision next.
+    _vc = __import__("vcard")
+    _f = _vc.fields(d)
+    if _f.get("missing"):
+        print("To improve this card, provision: " + "; ".join(_f["missing"]))
+    if getattr(a, "open", False) and not os.environ.get("HUMANIZE_NO_BROWSER"):
+        front_png = str(files.get("front.png", out_dir / "front.png"))
+        subprocess.run(["open", front_png])
 
 
 def cmd_self(a):
@@ -507,6 +587,44 @@ def cmd_memory(a):
     print(json.dumps(out, indent=2))
 
 
+def cmd_totp(a):
+    import totp
+    try:
+        if a.tcmd == "new":
+            secret = totp.new_secret()
+            if a.name:
+                keystore.namespace()
+                keystore.put(a.name, secret)
+                sys.stderr.write(f"stored as a secret named {a.name!r}\n")
+            print(secret)
+        elif a.tcmd == "code":
+            secret = keystore.get(a.secret) or a.secret
+            print(f"{totp.code_for(secret)}  (valid {totp.seconds_remaining()}s more)")
+        else:
+            print(totp.otpauth_uri(a.secret, a.label))
+    except Exception as e:
+        die(str(e))
+
+
+def cmd_calendar(a):
+    import ical
+    try:
+        if a.ccmd == "add":
+            uid = ical.add(a.title, a.start, a.end, a.location, a.description)
+            out = uid
+        elif a.ccmd == "delete":
+            ical.delete(a.uid)
+            out = None
+        else:
+            out = json.dumps(ical.list_events(a.frm, a.to), indent=2)
+    except ValueError as e:
+        die(str(e))
+    if ident_path().exists() and not store.get(load_identity(), "calendar.local"):
+        store.update(ident_path(), lambda d: store.set_path(d, "calendar.local", str(ical.path())))
+    if out is not None:
+        print(out)
+
+
 def cmd_secret(a):
     try:
         if a.scmd == "backend":
@@ -536,13 +654,11 @@ def cmd_demo(a):
     demo.mkdir(parents=True, exist_ok=True)
     os.environ["HUMANIZE_HOME"] = str(demo)
     d = json.loads(TEMPLATE.read_text())
-    d.update(name="Ari Vale", persona="Software engineer. Direct, writes short emails, ships small things fast.",
-             did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK")
-    d["email"] = {"mailgent": {"address": "bright-otter-k3f9@mailgent.dev", "api_key": "mgnt-demo0000000000"},
-                  "agentmail": {"address": "ari.vale@agentmail.to", "api_key": "am_demo000000"}}
+    d.update(name="Ari Vale", persona="Software engineer. Direct, writes short emails, ships small things fast.")
+    d["email"] = {"agentmail": {"address": "ari.vale@agentmail.to", "api_key": "am_demo000000"}}
     d["phone"]["agentphone"] = {"number": "+14155550123", "number_id": "num_01", "agent_id": "agt_01", "api_key": "ap_demo0000"}
     d["messaging"] = {"telegram": {"token": "123456:demo"}}
-    d["wallet"]["mailgent_base_usdc"] = "0x4b7C1a9E2f3D4c5B6a7F8e9D0c1B2a3F4e5D6c7B"
+    d["wallet"]["evm"] = {"address": "0x4b7C1a9E2f3D4c5B6a7F8e9D0c1B2a3F4e5D6c7B"}
     d["browser"] = {"provider": "claude-browser"}
     d["accounts"] = {"github": {"username": "arivale", "vault": "github"}, "vercel": {"token": "vcp_demo"}}
     d["voice"] = {"agentphone": "voice_rachel", "tts": "edge-tts"}
@@ -550,15 +666,22 @@ def cmd_demo(a):
     d["computer"] = {"provider": "docker", "id": "ari-box"}
     d["memory"]["supabase"] = "abcdefghijklmnop"
     d["social"] = {"x": {"handle": "arivale", "token": "demo"}}
+    d["calendar"]["local"] = str(demo / "calendar.ics")
     d["calendar"]["booking_url"] = "https://cal.com/ari-vale/15min"
     d["self_repo"] = {"url": "https://github.com/arivale/self.git", "last_push": now()}
     d["host"] = detect_host() or {"app": "other", "open_command": "", "chat_url": "", "session_id": ""}
     d["layers"] = {str(n): {"enabled": n != 14} for n in LAYERS}
     d["rules"] = ["Monthly spend cap 50 USD."]
     d["dashboard_requests"] = [{"at": now(), "text": "Get a UK number.", "done": False}]
-    for did in ("mailgent agent-signup", "agentmail inbox ari.vale verified", "agentphone number +14155550123"):
-        store.log_entry(d, did, by="agent")
+    for what in ("agentmail inbox ari.vale verified", "agentphone number +14155550123"):
+        store.log_entry(d, what, by="agent")
     d["face"] = {"photo": make_avatar("Ari Vale", demo / "face.png"), "seed": "Ari Vale"}
+    _card_mod = __import__("card")
+    if _card_mod.have_pillow():
+        try:
+            _card_mod.write_all(d, demo / "card")
+        except Exception:
+            pass
     store.save(demo / "identity.json", d)
     port = a.port if port_free(a.port) else find_port(a.port + 1)
     print(f"demo identity in {demo}. Ctrl-C to stop.")
@@ -583,6 +706,7 @@ def main():
     add("open", cmd_open)
     add("stop", cmd_stop)
     p = add("avatar", cmd_avatar); p.add_argument("seed", nargs="?")
+    p = add("card", cmd_card); p.add_argument("--out"); p.add_argument("--title"); p.add_argument("--tagline"); p.add_argument("--website"); p.add_argument("--vcard", action="store_true"); p.add_argument("--open", dest="open", action="store_true")
     p = add("self", cmd_self); p.add_argument("args", nargs=argparse.REMAINDER)
     p = add("demo", cmd_demo); p.add_argument("--port", type=int, default=4242); p.add_argument("--no-open", action="store_true")
     p = add("get", cmd_get); p.add_argument("path"); p.add_argument("--pointer", action="store_true", help="print the pointer, not the secret")
@@ -600,6 +724,17 @@ def main():
     m = ssub.add_parser("get"); m.add_argument("name")
     m = ssub.add_parser("set"); m.add_argument("name"); m.add_argument("value")
     m = ssub.add_parser("delete"); m.add_argument("name")
+    p = add("totp", cmd_totp)
+    tsub = p.add_subparsers(dest="tcmd", required=True)
+    m = tsub.add_parser("new"); m.add_argument("name", nargs="?")
+    m = tsub.add_parser("code"); m.add_argument("secret")
+    m = tsub.add_parser("uri"); m.add_argument("secret"); m.add_argument("label")
+    p = add("calendar", cmd_calendar)
+    csub = p.add_subparsers(dest="ccmd", required=True)
+    m = csub.add_parser("add"); m.add_argument("title"); m.add_argument("start")
+    m.add_argument("--end"); m.add_argument("--location"); m.add_argument("--description")
+    m = csub.add_parser("list"); m.add_argument("--from", dest="frm"); m.add_argument("--to")
+    m = csub.add_parser("delete"); m.add_argument("uid")
     p = add("memory", cmd_memory)
     msub = p.add_subparsers(dest="mcmd", required=True)
     m = msub.add_parser("add"); m.add_argument("text"); m.add_argument("--kind", default="note"); m.add_argument("--tags", default="")

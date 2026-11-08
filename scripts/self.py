@@ -249,12 +249,18 @@ def stage(k):
             (REPO / "memory.db.enc").write_bytes(seal(Path(tmp).read_bytes(), k))
         finally:
             os.unlink(tmp)
+    cal = HOME / "calendar.ics"
+    calenc = REPO / "calendar.ics.enc"
+    if cal.exists():
+        calenc.write_bytes(seal(cal.read_bytes(), k))
+    elif calenc.exists():
+        calenc.unlink()
     shutil.copytree(HERE, REPO / "scripts", dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.lock"))
     for f in ("humanize.py", "identity.template.json"):
         if (HERE.parent / f).exists():
             shutil.copyfile(HERE.parent / f, REPO / f)
     (REPO / "README.md").write_text(
-        "# self\n\nA Humanize agent. `identity.json.enc`, `secrets.json.enc` and `memory.db.enc` are encrypted with the self key; nothing else here is secret.\n\n"
+        "# self\n\nA Humanize agent. `identity.json.enc`, `secrets.json.enc`, `memory.db.enc` and `calendar.ics.enc` are encrypted with the self key; nothing else here is secret.\n\n"
         "Load it on a new machine (needs git, Python 3 and the self key):\n\n"
         "```bash\ngit clone <this repo> ~/.humanize/self\n"
         "HUMANIZE_SELF_KEY=<self key> python3 ~/.humanize/self/scripts/self.py unlock\n"
@@ -316,6 +322,10 @@ def unlock(force):
     if menc.exists() and (force or not (HOME / "memory.db").exists()):
         (HOME / "memory.db").write_bytes(unseal(menc.read_bytes(), key()))
         os.chmod(HOME / "memory.db", 0o600)
+    calenc = REPO / "calendar.ics.enc"
+    if calenc.exists() and (force or not (HOME / "calendar.ics").exists()):
+        (HOME / "calendar.ics").write_bytes(unseal(calenc.read_bytes(), key()))
+        os.chmod(HOME / "calendar.ics", 0o600)
     senc = REPO / "secrets.json.enc"
     if senc.exists():
         if not keystore:

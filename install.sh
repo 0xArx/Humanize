@@ -1,9 +1,13 @@
 #!/bin/sh
-# Humanize installer. The repository is private, so git needs to be able to read it:
-#   GITHUB_TOKEN=<token that can read 0xArx/Humanize> sh install.sh [--name "Ari Vale"]
+# Humanize installer.
+#   curl -fsSL https://raw.githubusercontent.com/0xArx/Humanize/main/install.sh | sh -s -- --name "Ari Vale"
 # or run it from inside a clone you already have. It clones (or updates) ~/.humanize/app, links it as a
 # Claude Code skill when Claude Code is present, then runs `humanize.py init`, which creates the identity,
 # draws the avatar and opens the dashboard.
+#
+# The repo is public, so no credentials are needed. If you point HUMANIZE_REPO at a private fork, set
+# GITHUB_TOKEN (a fine-grained token with Contents: read) and it is used for the clone only, through the
+# environment, so it never appears in the process list or in .git/config.
 #
 # Variables: HUMANIZE_REPO, HUMANIZE_REF (branch or tag, default main), HUMANIZE_DIR (default ~/.humanize/app)
 set -eu
@@ -36,7 +40,7 @@ elif [ -d "$DIR/.git" ]; then
   g -C "$DIR" merge -q --ff-only "origin/$REF" 2>/dev/null || true
 else
   mkdir -p "$(dirname "$DIR")"
-  g clone -q -b "$REF" "$REPO" "$DIR" || { echo "could not clone $REPO. It is private: set GITHUB_TOKEN or sign in to git first." >&2; exit 1; }
+  g clone -q -b "$REF" "$REPO" "$DIR" || { echo "could not clone $REPO. If this is a private fork, set GITHUB_TOKEN." >&2; exit 1; }
 fi
 
 if [ -d "$HOME/.claude" ] && [ ! -e "$HOME/.claude/skills/humanize" ]; then

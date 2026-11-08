@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "site/styles.css"
+        ],
+        "createdAt": "2026-09-24T00:16:19.092Z",
+        "reason": "two deliberate, narrow decorative accents (the hero's single emphasized word, and the 4 large step numerals in How it works), both using the page's own brand-palette gradient, not a whole-heading or metric fill; reviewed and kept as intentional design"
+      }
+    ]
+  }
+}

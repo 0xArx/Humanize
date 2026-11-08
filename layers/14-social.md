@@ -13,6 +13,4 @@ X, LinkedIn and Reddit all show CAPTCHAs at sign-up and forbid automated account
 | LinkedIn | No open posting API for individuals; the agent reads through the browser and posts through it. |
 | GitHub | Layer 6. Fill in the bio and avatar. |
 
-If the human connects the accounts once in the Mailgent console (Settings, Integrations), the agent can post with `mailgent social post "<text>" --platforms x,linkedin` and read with `mailgent social accounts` and `mailgent social posts`.
-
 A consistent name, avatar and bio across all of them is what makes the agent read as one person.

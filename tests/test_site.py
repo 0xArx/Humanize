@@ -24,7 +24,8 @@ def readme_rows():
 class FilesTests(unittest.TestCase):
     def test_everything_the_page_needs_is_there(self):
         for f in ("index.html", "styles.css", "app.js", "early.js", "orb.js", "vercel.json", "favicon.svg", "fonts/fonts.css",
-                  "fonts/InstrumentSerif-400.woff2", "fonts/IBMPlexSans.woff2", "img/dashboard-light.webp", "img/dashboard-dark.webp"):
+                  "fonts/InstrumentSerif-400.woff2", "fonts/IBMPlexSans.woff2", "img/dashboard-light.webp", "img/dashboard-dark.webp",
+                  "img/card-front.png", "img/card-back.png"):
             self.assertTrue((SITE / f).is_file(), f)
         refs = set(re.findall(r'(?:src|href)="(/[^"#?]+)"', PAGE))
         for ref in refs:
@@ -86,7 +87,7 @@ class HtmlTests(unittest.TestCase):
         for target in re.findall(r'(?:href|aria-controls)="#?([A-Za-z][\w-]*)"', PAGE):
             if target in ("top",):
                 continue
-            self.assertIn(target, ids + ["what", "how", "layers", "dashboard", "security", "use", "status", "faq"], f"dangling reference to #{target}")
+            self.assertIn(target, ids + ["what", "how", "layers", "card", "dashboard", "security", "use", "status", "faq"], f"dangling reference to #{target}")
         for img in re.findall(r"<img[^>]*>", PAGE):
             self.assertRegex(img, r'\balt="[^"]{10,}"')
             self.assertRegex(img, r'\bwidth="\d+"')
@@ -94,7 +95,7 @@ class HtmlTests(unittest.TestCase):
 
     def test_the_nav_links_point_at_real_sections(self):
         for sec in re.findall(r'data-sec="(\w+)"', PAGE):
-            self.assertIn(f'id="{sec}"', PAGE)
+            self.assertIn(f'id="{sec}"', PAGE, f"nav link data-sec={sec} has no matching section id")
 
 
 class TruthTests(unittest.TestCase):
@@ -149,13 +150,22 @@ class TruthTests(unittest.TestCase):
 
     def test_the_provider_table_lists_only_providers_the_ledger_knows(self):
         ledger = (ROOT / "docs" / "providers.md").read_text()
-        alias = {"x402 Bazaar": "x402 and the Bazaar"}
+        alias = {}
         for name in re.findall(r'<span role="cell">([A-Za-z0-9 ]+)</span><span role="cell" class="y">', PAGE):
             self.assertIn(alias.get(name, name), ledger, f"{name} is on the page but not in docs/providers.md")
 
+    def test_the_card_section_exists_and_images_have_alt(self):
+        self.assertIn('id="card"', PAGE)
+        self.assertIn("card-front.png", PAGE)
+        self.assertIn("card-back.png", PAGE)
+        for img in re.findall(r'<img[^>]+card-(?:front|back)\.png[^>]*>', PAGE):
+            self.assertRegex(img, r'\balt="[^"]{10,}"', "card image needs descriptive alt text")
+            self.assertRegex(img, r'\bwidth="\d+"', "card image needs width")
+            self.assertRegex(img, r'\bheight="\d+"', "card image needs height")
+
     def test_the_page_never_says_a_live_signup_was_run(self):
         self.assertIn("Nothing that creates an account has been run yet", PAGE)
-        for row in re.findall(r'<span role="cell">(?:Mailgent|AgentMail|AgentPhone|Dial)</span>(.*?)</div>', PAGE):
+        for row in re.findall(r'<span role="cell">(?:AgentMail|AgentPhone|Dial)</span>(.*?)</div>', PAGE):
             self.assertIn("not yet", row)
 
 
