@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2] - 2026-11-08
+
+### Changed
+- The dashboard's layers are now a board with three columns by status: To set up, Live and Off. Every card has the same compact shape (number, name, its main value, a switch and Edit or Set up), and switched-off layers shrink to one line. Flipping a switch moves the card to its new column. It replaces four topic groups of uneven size (6, 7, 2 and 9 cards) with tall cards that mixed live, empty and switched-off layers. The status filter is gone, since the columns show the same thing; the search box stays.
+
+### Fixed
+- Empty layer cards had their text centred by accident, because they shared a class name with the page's centred empty-state messages.
+
 ## [0.4.1] - 2026-11-08
 
 ### Changed

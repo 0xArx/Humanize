@@ -124,14 +124,12 @@ class TruthTests(unittest.TestCase):
         for n in range(24):
             self.assertTrue(files[n].startswith(f"# Layer {n}: "))
 
-    def test_the_groups_match_the_dashboard(self):
-        dash = (ROOT / "scripts" / "dashboard.html").read_text()
-        groups = {}
-        for name, nums in re.findall(r'\["(\w+)", \[([\d, ]+)\]\]', re.search(r"const GROUPS = (\[.*?\]);", dash).group(1)):
-            for n in nums.split(","):
-                groups[int(n)] = name
-        for n, c in self.cards().items():
-            self.assertEqual(c["group"], groups[n], f"layer {n} group")
+    def test_every_layer_card_has_a_group(self):
+        # The site filters layers by topic; the dashboard shows them by status
+        # instead, so the four topics only need to be consistent on the page.
+        groups = {c["group"] for c in self.cards().values()}
+        self.assertEqual(groups, {"Self", "Reach", "Money", "World"})
+        self.assertEqual(len(self.cards()), 24)
 
     def test_the_numbers_are_not_bigger_than_the_truth(self):
         claimed = {b: int(a) for a, b in re.findall(r'<b>(\d+)</b><span>([^<]+)</span>', PAGE)}

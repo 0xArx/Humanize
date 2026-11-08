@@ -95,7 +95,7 @@ A full-page app in your browser at `http://127.0.0.1:4242` (another port if that
 
 - **Agent rail:** the live avatar, name and persona (click to edit), copy buttons for its email, number, wallet and handles, and the state of its encrypted backup.
 - **Overview:** how many layers are set up, where it can be reached, its money, and what is waiting on it.
-- **Layer grid:** every layer as a card with its facts, an on/off switch and a Provision or Modify button. Filter by All, Live, Empty or Off, search with `/`, and click a card for details.
+- **Layer board:** three columns, To set up, Live and Off. Every layer is a compact card with its main value, an on/off switch and a Set up or Edit button; switching one moves it to its column. Search with `/`, and click a card for details.
 - **Card panel:** a preview of the agent's business card (front and back), links to download the vCard and PDF, and a Regenerate button.
 - **Request rail:** tell the agent something (Cmd+Enter sends), watch requests, activity, and edit its rules.
 - **Open chat:** takes you back to the app your agent runs in. The Host button lets you pick Claude Code, Codex, Cursor or VS Code and test the command. If it fails it tells you why.

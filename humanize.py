@@ -64,7 +64,7 @@ sys.path.insert(0, str(SCRIPTS))
 import keystore  # noqa: E402
 import store  # noqa: E402
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 LAYERS = range(0, 24)
 
 FIRST = ["Ari", "Mira", "Tomas", "Noor", "Iris", "Kai", "Lena", "Omar", "Sana", "Jude", "Nadia", "Rafi", "Elio", "Zara", "Idris", "Maya"]

@@ -18,7 +18,7 @@ Start it as soon as the identity exists so the human can watch layers fill in du
 
 ## What it shows
 
-The live avatar, name and persona (editable in place). Copy rows for the email, number, wallet and handles. A KPI strip. Every layer as a card with its status, its facts, an on/off switch and a Provision or Modify button, filterable and searchable; click a card for its full details. A box to send the agent a request. Requests, activity and rules in tabs. The state of the encrypted backup with a Push button. Secrets are hidden before they reach the browser and are never editable there.
+The live avatar, name and persona (editable in place). Copy rows for the email, number, wallet and handles. A KPI strip. Every layer as a compact card on a board with three columns, To set up, Live and Off, each with its main value, an on/off switch and a Set up or Edit button; switching a layer moves its card, the board is searchable, and clicking a card opens its full details. A box to send the agent a request. Requests, activity and rules in tabs. The state of the encrypted backup with a Push button. Secrets are hidden before they reach the browser and are never editable there.
 
 ## The chat button
 

@@ -136,31 +136,36 @@
   .bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--c1), var(--c2)); border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
 
   .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex: none; }
-  .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); gap: 2px; flex-wrap: wrap; }
-  .seg button { background: transparent; border: 0; padding: 6px 12px; border-radius: 9px; color: var(--ink2); font-size: 13px; }
-  .seg button[aria-pressed="true"] { background: var(--bg2); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-  .seg button small { color: var(--mute); margin-left: 4px; font: 11px var(--mono); }
+  .tools-h { margin: 0; font: italic 26px/1 var(--serif); display: flex; align-items: baseline; gap: 10px; }
+  .tools-h small { font: 11px var(--mono); font-style: normal; color: var(--mute); text-transform: uppercase; letter-spacing: .1em; }
   .search { flex: 1 1 200px; max-width: 320px; margin-left: auto; position: relative; }
   .search input { width: 100%; height: 36px; padding: 0 34px 0 12px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); font: 13px var(--sans); outline: none; }
   .search kbd { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); font: 11px var(--mono); color: var(--mute); border: 1px solid var(--line2); border-radius: 6px; padding: 0 5px; pointer-events: none; }
 
-  .group h2 { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; font: italic 26px/1 var(--serif); }
-  .group h2 small { font: 11px var(--mono); color: var(--mute); text-transform: uppercase; letter-spacing: .1em; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 12px; }
-  .lc { display: flex; flex-direction: column; gap: 8px; padding: 14px; min-height: 176px; cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s, opacity .15s; }
-  .lc:hover { border-color: var(--line2); transform: translateY(-2px); box-shadow: 0 16px 30px -22px rgba(0,0,0,.4); }
-  .lc.off { opacity: .55; } .lc.empty { border-style: dashed; }
-  .lc-h { display: flex; align-items: center; gap: 8px; }
-  .lc-h .n { font: 11px var(--mono); color: var(--mute); }
+  /* Layer board: three status columns, compact cards with one shape */
+  #groups { container-type: inline-size; }
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  @container (max-width: 640px) { .board { grid-template-columns: minmax(0, 1fr); } }
+  .col { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 18px; background: var(--panel2); border: 1px solid var(--line); min-width: 0; }
+  .col-h { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; }
+  .col-h h2 { margin: 0; font: italic 22px/1 var(--serif); flex: 1; min-width: 0; }
+  .col-h .count { font: 11px var(--mono); color: var(--ink2); background: var(--bg2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+  .col-sub { margin: 0 4px 4px; color: var(--mute); font-size: 12px; line-height: 1.35; }
+  .col-none { margin: 0; padding: 14px 8px; text-align: center; color: var(--mute); font-size: 12px; border: 1px dashed var(--line2); border-radius: 12px; }
+  .lc { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; text-align: left; cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s; }
+  .lc:hover { border-color: var(--line2); transform: translateY(-1px); box-shadow: 0 12px 24px -20px rgba(0,0,0,.45); }
+  .lc-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .lc-h .n { font: 11px var(--mono); color: var(--mute); flex: none; }
   .lc-h h3 { margin: 0; font: 600 14px var(--sans); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--off); flex: none; }
   .pip.on { background: var(--on); box-shadow: 0 0 10px color-mix(in oklab, var(--on) 55%, transparent); } .pip.partial { background: var(--warn); }
-  .lc .desc { margin: 0; color: var(--mute); font-size: 12px; line-height: 1.4; }
-  .kv { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font: 12px var(--mono); min-width: 0; }
-  .kv li { display: flex; gap: 8px; min-width: 0; } .kv li span:first-child { color: var(--mute); flex: none; min-width: 64px; } .kv li span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .kv .none { color: var(--mute); font-style: italic; font-family: var(--sans); }
-  .lc-f { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .lc .val { margin: 0; font: 12px var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .lc .val.desc { font: 12px/1.35 var(--sans); color: var(--mute); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .lc-f { display: flex; align-items: center; gap: 8px; }
   .lc-f .cnt { font: 11px var(--mono); color: var(--mute); flex: 1; }
+  .lc-f .sm { padding: 3px 10px; font-size: 12px; }
+  .lc.is-off { flex-direction: row; align-items: center; padding: 8px 10px 8px 12px; }
+  .lc.is-off .lc-h { flex: 1; } .lc.is-off h3 { color: var(--ink2); font-weight: 500; }
   .switch { position: relative; width: 34px; height: 20px; flex: none; display: inline-block; }
   .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
   .switch span { position: absolute; inset: 0; background: var(--off); border-radius: 999px; transition: .15s; cursor: pointer; }
@@ -296,7 +301,7 @@
     <section class="onboard reveal" id="onboard" hidden></section>
     <section class="kpis reveal" id="kpis" style="animation-delay:.05s"></section>
     <div class="tools reveal" style="animation-delay:.08s">
-      <div class="seg" id="seg" role="group" aria-label="Filter layers"></div>
+      <h2 class="tools-h">Layers <small id="layersSub"></small></h2>
       <div class="search"><input id="q" type="search" placeholder="Filter layers" aria-label="Filter layers" autocomplete="off"><kbd>/</kbd></div>
     </div>
     <div id="groups"></div>
@@ -374,7 +379,6 @@ const LAYERS = [
   { n: 23, t: "Self, stored", d: "Encrypted copy in a private git repo.",                    get: i => [["repo", g(i,"self_repo.url")], ["last push", g(i,"self_repo.last_push")]] },
 ];
 const SLUG = {0:"identity",1:"email",2:"phone",3:"messaging",4:"money",5:"browser",6:"accounts",7:"avatar",8:"voice",9:"eyes",10:"computer",11:"memory",12:"brain",13:"keys-2fa",14:"social",15:"calendar",16:"address",17:"domain",18:"signatures",19:"verify",20:"contacts",21:"entity",22:"dashboard",23:"self-storage"};
-const GROUPS = [["Self", [0, 7, 8, 13, 22, 23]], ["Reach", [1, 2, 3, 14, 15, 16, 17]], ["Money", [4, 21]], ["World", [5, 6, 9, 10, 11, 12, 18, 19, 20]]];
 const HOSTS = {
   "claude-code-desktop": { label: "Claude Code (desktop app)", cmd: 'open -a "Claude"', url: "" },
   "claude-code-terminal": { label: "Claude Code (terminal)", cmd: `osascript -e 'tell app "Terminal" to do script "claude --resume {sid}"'`, url: "" },
@@ -388,7 +392,7 @@ const HOSTS = {
 /* ---------- state + helpers ---------- */
 const $ = s => document.querySelector(s);
 const TOKEN = document.querySelector('meta[name="hz-token"]').content;
-let ID = {}, META = {}, MTIME = -1, SEED = "", FILTER = "all", QUERY = "", TAB = "reqs", DRAWER = null, LAST_OK = 0, SELF = null;
+let ID = {}, META = {}, MTIME = -1, SEED = "", QUERY = "", TAB = "reqs", DRAWER = null, LAST_OK = 0, SELF = null;
 let BCARD_SHOWING = "front";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = t => t ? new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
@@ -429,9 +433,6 @@ function layerState(L, i) {
 }
 const allStates = i => LAYERS.map(L => layerState(L, i));
 function matches(s) {
-  if (FILTER === "live" && !(s.st && s.en)) return false;
-  if (FILTER === "empty" && s.st) return false;
-  if (FILTER === "off" && s.en) return false;
   if (QUERY) { const hay = (s.L.t + " " + s.L.d + " " + s.have.map(f => f[0] + " " + f[1]).join(" ")).toLowerCase(); if (!hay.includes(QUERY)) return false; }
   return true;
 }
@@ -468,15 +469,19 @@ function render() {
     `<div class="card kpi"><span class="lab">Money</span><span class="val" style="font-size:24px;padding-top:6px">${real(wallet) ? esc(short(wallet)) : "no wallet"}</span><span class="sub">${real(card) ? "card: " + esc(card) : "no card yet"} &middot; ${esc(g(i, "rules") && arr(i.rules).length ? arr(i.rules).length + " rule(s)" : "no rules")}</span></div>` +
     `<div class="card kpi"><span class="lab">Waiting on the agent</span><span class="val">${pending}<small>request${pending === 1 ? "" : "s"}</small></span><span class="sub">${lastLog ? "last activity " + ago(lastLog.at) : "no activity yet"}</span></div>`;
 
-  const counts = { all: states.length, live: states.filter(s => s.st && s.en).length, empty: states.filter(s => !s.st).length, off };
-  $("#seg").innerHTML = [["all", "All"], ["live", "Live"], ["empty", "Empty"], ["off", "Off"]].map(([k, l]) => `<button data-filter="${k}" aria-pressed="${FILTER === k}">${l}<small>${counts[k]}</small></button>`).join("");
-
   const shown = states.filter(matches);
-  $("#groups").innerHTML = GROUPS.map(([name, ns], gi) => {
-    const cards = ns.map(n => states.find(s => s.L.n === n)).filter(matches);
-    if (!cards.length) return "";
-    return `<section class="group reveal" style="animation-delay:${.1 + gi * .05}s"><h2>${name}<small>${cards.length} layer${cards.length === 1 ? "" : "s"}</small></h2><div class="grid">` + cards.map(cardHtml).join("") + `</div></section>`;
-  }).join("") || `<div class="none-found">No layers match. <button class="sm" data-filter="all">Show all</button></div>`;
+  $("#layersSub").textContent = `${states.length - off} of ${states.length} on`;
+  const byN = (a, b) => a.L.n - b.L.n;
+  const COLS = [
+    ["todo", "To set up", "Switched on, not finished yet.", shown.filter(s => s.en && s.st !== "on").sort((a, b) => (a.st === "partial" ? 0 : 1) - (b.st === "partial" ? 0 : 1) || byN(a, b))],
+    ["live", "Live", "Set up and in use.", shown.filter(s => s.en && s.st === "on").sort(byN)],
+    ["off", "Off", "Switched off for this agent. Flip one on to add it.", shown.filter(s => !s.en).sort(byN)],
+  ];
+  $("#groups").innerHTML = shown.length ? `<div class="board reveal">` + COLS.map(([k, name, sub, cards]) =>
+    `<section class="col col-${k}" aria-label="${name}"><div class="col-h"><h2>${name}</h2><span class="count">${cards.length}</span></div><p class="col-sub">${sub}</p>` +
+    (cards.map(cardHtml).join("") || `<p class="col-none">${QUERY ? "No match here" : k === "todo" ? "Nothing left to set up" : k === "live" ? "Nothing set up yet" : "Every layer is on"}</p>`) +
+    `</section>`).join("") + `</div>`
+    : `<div class="none-found">No layers match. <button class="sm" data-act="clearq">Clear the filter</button></div>`;
 
   const reqs = arr(i.dashboard_requests).map((r, idx) => ({ ...r, idx })).reverse();
   $("#nReqs").textContent = pending ? pending : "";
@@ -511,14 +516,16 @@ function render() {
   }
 }
 function cardHtml(s) {
-  const { L, all, have, en, st } = s, n = L.n;
-  const kv = have.slice(0, 3).map(([k, v]) => `<li><span>${esc(k)}</span><span title="${esc(v)}">${esc(v)}</span></li>`).join("") || `<li class="none">not set up yet</li>`;
-  return `<article class="card lc ${en ? "" : "off"} ${st ? "" : "empty"}" data-act="open" data-n="${n}" tabindex="0" role="button" aria-label="Layer ${n}, ${esc(L.t)}: open details">
-    <div class="lc-h"><span class="n">${String(n).padStart(2, "0")}</span><h3>${esc(L.t)}</h3><span class="pip ${st}" title="${st === "on" ? "fully set up" : st === "partial" ? "partly set up" : "not set up"}"></span></div>
-    <p class="desc">${esc(L.d)}</p><ul class="kv">${kv}</ul>
-    <div class="lc-f"><span class="cnt">${have.length}/${all.length} set${have.length > 3 ? " &middot; +" + (have.length - 3) + " more" : ""}</span>
-      <label class="switch" data-act="noop" title="${en ? "In use" : "Switched off"}"><input type="checkbox" data-act="layer" data-n="${n}" aria-label="Use layer ${n}, ${esc(L.t)}" ${en ? "checked" : ""}><span></span></label>
-      <button class="sm" data-act="ask" data-n="${n}" data-mode="${have.length ? "modify" : "provision"}">${have.length ? "Modify" : "Provision"}</button></div></article>`;
+  const { L, all, have, en, st } = s, n = L.n, num = String(n).padStart(2, "0");
+  const label = `Layer ${n}, ${esc(L.t)}: open details`;
+  const sw = `<label class="switch" data-act="noop" title="${en ? "In use" : "Switched off"}"><input type="checkbox" data-act="layer" data-n="${n}" aria-label="Use layer ${n}, ${esc(L.t)}" ${en ? "checked" : ""}><span></span></label>`;
+  if (!en) return `<article class="card lc is-off" data-act="open" data-n="${n}" tabindex="0" role="button" aria-label="${label}"><div class="lc-h"><span class="n">${num}</span><h3>${esc(L.t)}</h3></div>${sw}</article>`;
+  const first = have[0];
+  const val = first ? `<p class="val" title="${esc(first[1])}">${esc(first[1])}</p>` : `<p class="val desc">${esc(L.d)}</p>`;
+  const pipTitle = st === "on" ? "fully set up" : st === "partial" ? "partly set up" : "not set up";
+  return `<article class="card lc" data-act="open" data-n="${n}" tabindex="0" role="button" aria-label="${label}">
+    <div class="lc-h"><span class="n">${num}</span><h3>${esc(L.t)}</h3><span class="pip ${st}" title="${pipTitle}"></span></div>${val}
+    <div class="lc-f"><span class="cnt">${have.length}/${all.length} set</span>${sw}<button class="sm" data-act="ask" data-n="${n}" data-mode="${have.length ? "modify" : "provision"}">${have.length ? "Edit" : "Set up"}</button></div></article>`;
 }
 function renderDrawer() {
   const L = LAYERS.find(x => x.n === DRAWER); if (!L) return;
@@ -610,12 +617,11 @@ function applyTheme(t) { document.documentElement.dataset.theme = t; $("#theme")
 document.addEventListener("click", e => {
   const tab = e.target.closest("[data-tab]");
   if (tab) { TAB = tab.dataset.tab; document.querySelectorAll("#tabbar button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === TAB)); ["reqs", "log", "rules"].forEach(k => { $("#p-" + k).hidden = k !== TAB; }); return; }
-  const f = e.target.closest("[data-filter]");
-  if (f) { FILTER = f.dataset.filter; render(); return; }
   const el = e.target.closest("[data-act]"); if (!el) return;
   const act = el.dataset.act;
   if (act === "copy") { e.stopPropagation(); copy(el.dataset.v); }
   else if (act === "chat") chat();
+  else if (act === "clearq") { $("#q").value = ""; QUERY = ""; render(); }
   else if (act === "close") closeDrawer();
   else if (act === "ask") { e.stopPropagation(); const n = +el.dataset.n, L = LAYERS.find(x => x.n === n), modify = el.dataset.mode === "modify"; ask(modify ? `Update layer ${n} (${L.t}): ` : `Provision layer ${n} (${L.t})`, modify); }
   else if (act === "done") done(+el.dataset.i);
